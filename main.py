@@ -7,7 +7,7 @@ def main():
 
         if choice == "1":
             print("Add inventory.")
-
+            
         elif choice == "2":
             print("View inventory.")
 
@@ -21,5 +21,5 @@ def main():
         else:
             print("Please enter 1, 2, 3 or 4.")
 
-
+if __name__ == "__main__":
     main()
