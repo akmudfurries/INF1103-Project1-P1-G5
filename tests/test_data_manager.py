@@ -1,4 +1,5 @@
 # =====================================================================
+# Test CMD: python -m unittest discover -s tests -v
 import unittest
 
 from data_manager import build_inventory_record
