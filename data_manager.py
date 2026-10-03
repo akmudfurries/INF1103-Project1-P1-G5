@@ -61,3 +61,48 @@ def validate_inventory_record(record):
         raise ValueError("operational_notes must be a string.")
 
     return True 
+
+def build_procurement_record(
+    item_id,
+    recommended_quantity,
+    priority,
+    action
+):
+    record = {
+        "item_id": item_id,
+        "recommended_quantity": recommended_quantity,
+        "priority": priority,
+        "action": action
+    }
+
+    validate_procurement_record(record)
+
+    return record
+
+def validate_procurement_record(record):
+    required_fields = ["item_id", "recommended_quantity", "priority", "action"]
+
+    if not isinstance(record, dict):
+        raise ValueError("Procurement record must be a dictionary.")
+
+    for field in required_fields:
+        if field not in record:
+            raise ValueError(f"Missing required field: {field}")
+
+    if not isinstance(record["item_id"], str) or not record["item_id"].strip():
+        raise ValueError("item_id must be a non-empty string.")
+
+    if not isinstance(record["recommended_quantity"], int) \
+            or isinstance(record["recommended_quantity"], bool):
+        raise ValueError("recommended_quantity must be an integer.")
+
+    if record["recommended_quantity"] < 0:
+        raise ValueError("recommended_quantity cannot be negative.")
+
+    if not isinstance(record["priority"], str) or not record["priority"].strip():
+        raise ValueError("priority must be a non-empty string.")
+
+    if not isinstance(record["action"], str) or not record["action"].strip():
+        raise ValueError("action must be a non-empty string.")
+
+    return True
