@@ -3,6 +3,8 @@ import unittest
 
 from data_manager import build_inventory_record
 from data_manager import validate_inventory_record
+from data_manager import build_procurement_record
+from data_manager import validate_procurement_record
 
 
 class TestInventoryRecord(unittest.TestCase):
@@ -54,6 +56,67 @@ class TestInventoryRecord(unittest.TestCase):
                 "Demand increased recently."
             )
 
+
+class TestProcurementRecord(unittest.TestCase):
+
+    def test_build_valid_procurement_record(self):
+        record = build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER"
+        )
+
+        self.assertEqual(record["item_id"], "INV001")
+        self.assertEqual(record["recommended_quantity"], 50)
+        self.assertEqual(record["priority"], "HIGH")
+        self.assertEqual(record["action"], "REORDER")
+
+    def test_missing_procurement_field(self):
+        record = {
+            "item_id": "INV001",
+            "recommended_quantity": 50,
+            "priority": "HIGH"
+        }
+
+        with self.assertRaises(ValueError):
+            validate_procurement_record(record)
+
+    def test_negative_recommended_quantity(self):
+        with self.assertRaises(ValueError):
+            build_procurement_record(
+                "INV001",
+                -10,
+                "HIGH",
+                "REORDER"
+            )
+
+    def test_invalid_procurement_item_id(self):
+        with self.assertRaises(ValueError):
+            build_procurement_record(
+                "",
+                50,
+                "HIGH",
+                "REORDER"
+            )
+
+    def test_invalid_priority(self):
+        with self.assertRaises(ValueError):
+            build_procurement_record(
+                "INV001",
+                50,
+                "",
+                "REORDER"
+            )
+
+    def test_invalid_action(self):
+        with self.assertRaises(ValueError):
+            build_procurement_record(
+                "INV001",
+                50,
+                "HIGH",
+                ""
+            )
 
 if __name__ == "__main__":
     unittest.main()
