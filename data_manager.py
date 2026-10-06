@@ -106,3 +106,9 @@ def validate_procurement_record(record):
         raise ValueError("action must be a non-empty string.")
 
     return True
+
+def find_record_by_id(records, record_id, id_field):
+    for record in records:
+        if record.get(id_field) == record_id:
+            return record
+    return None

@@ -7,6 +7,8 @@ from data_manager import validate_inventory_record
 from data_manager import build_procurement_record
 from data_manager import validate_procurement_record
 
+from data_manager import find_record_by_id
+
 
 class TestInventoryRecord(unittest.TestCase):
 
@@ -119,6 +121,18 @@ class TestProcurementRecord(unittest.TestCase):
                 ""
             )
 
+class TestRecordManagement(unittest.TestCase):
+    
+    def test_find_existing_record(self):
+        records = [
+            {"item_id": "INV001", "item_name": "Printer Ribbon"},
+            {"item_id": "INV002", "item_name": "Printer Paper"}
+        ]
+
+        result = find_record_by_id(records, "INV002", "item_id")
+
+        self.assertEqual(result["item_name"], "Printer Paper")
+        
 if __name__ == "__main__":
     unittest.main()
 
