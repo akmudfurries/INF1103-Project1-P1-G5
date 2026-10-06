@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 
+#json structure n format
 DEFAULT_DATA = {"schema_version": 1, "records": []}
 
 
@@ -44,3 +45,17 @@ def load_json(file_path):
         print(f"[Error] Failed reading '{path}': {error}")
         return None
 
+def load_records(file_path):
+    #extract list of records from json file
+    data = load_json(file_path)
+    if isinstance(data, dict) and isinstance(data.get("records"), list):
+        return data["records"]
+    return []
+
+
+def save_records(file_path, records):
+    #save list of records in standard json strucutre n format
+    if not isinstance(records, list):
+        print(f"[Error] 'records' must be a list for '{file_path}'")
+        return False
+    return save_json(file_path, {"schema_version": 1, "records": records})
