@@ -132,6 +132,16 @@ class TestRecordManagement(unittest.TestCase):
         result = find_record_by_id(records, "INV002", "item_id")
 
         self.assertEqual(result["item_name"], "Printer Paper")
+
+    def test_find_missing_record(self):
+        records = [
+            {"item_id": "INV001", "item_name": "Printer Ribbon"},
+            {"item_id": "INV002", "item_name": "Printer Paper"},
+        ]
+
+        result = find_record_by_id(records, "INV999", "item_id")
+
+        self.assertIsNone(result)
         
 if __name__ == "__main__":
     unittest.main()
