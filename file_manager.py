@@ -32,7 +32,9 @@ def save_json(file_path, data):
 def load_json(file_path):
     #load and parse json file with error handling
     path = Path(file_path)
-    ensure_json_file(path)
+    if not path.exists():
+        ensure_json_file(path)
+        return DEFAULT_DATA
 
     try:
         with path.open("r", encoding="utf-8") as file:
