@@ -1,5 +1,5 @@
 #reads and writes JSON FIlES
-
+#tested against mockup json file
 import json
 import os
 from pathlib import Path
