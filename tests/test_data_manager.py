@@ -8,7 +8,7 @@ from data_manager import build_procurement_record
 from data_manager import validate_procurement_record
 
 from data_manager import find_record_by_id
-
+from data_manager import add_record
 
 class TestInventoryRecord(unittest.TestCase):
 
@@ -142,7 +142,55 @@ class TestRecordManagement(unittest.TestCase):
         result = find_record_by_id(records, "INV999", "item_id")
 
         self.assertIsNone(result)
+
+    def test_add_new_record(self):
+        records = [
+            {"item_id": "INV1001", "item_name": "Printer Ribbon"}
+        ]
+
+        new_record = {
+            "item_id": "INV002",
+            "item_name": "Printer Paper"
+        }
+
+        success, error = add_record(records, new_record, "item_id")
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[1]["item_id"], "INV002")
+
+    def test_add_duplicate_record(self):
+        records = [
+            {"item_id": "INV001", "item_name": "Printer Ribbon"}
+        ]
+
+        duplicate_record = {
+            "item_id": "INV001",
+            "item_name": "Printer Paper"
+        }
         
+        success, error = add_record(records, duplicate_record, "item_id")
+
+        self.assertFalse(success)
+        self.assertEqual(error, "Duplicate ID: INV001")
+        self.assertEqual(len(records), 1)
+
+    def test_add_missing_id(self):
+        records = [
+            {"item_id": "INV001", "item_name": "Printer Ribbon"}
+        ]
+
+        missing_id_record = {
+            "item_name": "Printer Paper"
+        }
+
+        success, error = add_record(records, missing_id_record, "item_id")
+
+        self.assertFalse(success)
+        self.assertEqual(error, "Record is missing its ID.")
+        self.assertEqual(len(records), 1)
+
 if __name__ == "__main__":
     unittest.main()
 
