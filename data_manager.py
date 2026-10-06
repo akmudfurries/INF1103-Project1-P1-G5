@@ -112,3 +112,16 @@ def find_record_by_id(records, record_id, id_field):
         if record.get(id_field) == record_id:
             return record
     return None
+
+def add_record(records, record, id_field):
+    record_id = record.get(id_field)
+
+    if not record_id:
+        return False, "Record is missing its ID."
+
+    if find_record_by_id(records, record_id, id_field):
+        return False, f"Duplicate ID: {record_id}"
+
+    records.append(record)
+
+    return True, None
