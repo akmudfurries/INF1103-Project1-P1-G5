@@ -354,3 +354,12 @@ def test_get_records_for_missing_item():
     result = get_records_for_item(records, "INV999")
 
     assert result == []
+
+def test_get_records_for_missing_item():
+    records = [
+        {"procurement_id": "PRC001", "item_id": "INV001"}
+    ]
+
+    result = get_records_for_item(records, "INV999")
+
+    assert result == []
