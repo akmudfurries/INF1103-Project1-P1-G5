@@ -11,6 +11,7 @@ from data_manager import find_record_by_id
 from data_manager import add_record
 from data_manager import update_record
 from data_manager import link_procurement_to_item
+from data_manager import get_records_for_item
 
 class TestInventoryRecord(unittest.TestCase):
 
@@ -288,6 +289,27 @@ class TestRecordManagement(unittest.TestCase):
         self.assertFalse(success)
         self.assertEqual(error, "Inventory item not found: INV999")
 
+    def test_get_records_for_existing_item(self):
+        records = [
+            {"procurement_id": "PRC001", "item_id": "INV001"},
+            {"procurement_id": "PRC002", "item_id": "INV002"},
+            {"procurement_id": "PRC003", "item_id": "INV001"},
+        ]
+
+        result = get_records_for_item(records, "INV001")
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["procurement_id"], "PRC001")
+        self.assertEqual(result[1]["procurement_id"], "PRC003")
+
+    def test_get_records_for_missing_item(self):
+        records = [
+            {"procurement_id": "PRC001", "item_id": "INV001"}
+        ]
+
+        result = get_records_for_item(records, "INV999")
+
+        self.assertEqual(result, [])
 
 if __name__ == "__main__":
     unittest.main()
