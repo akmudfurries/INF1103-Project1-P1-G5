@@ -13,12 +13,14 @@ DATA_DIR = "data"
 INVENTORY_FILE = os.path.join(DATA_DIR, "inventory.json")
 DECISIONS_FILE = os.path.join(DATA_DIR, "procurement_decisions.json")
 
-# --- ACCEPTED ENUMS FOR VALIDATION ---
-# Predefined categories to validate AI response fields against
-ACCEPTED_DEMAND_LEVELS = ["low", "medium", "high"]
-ACCEPTED_DEMAND_TRENDS = ["decreasing", "stable", "increasing"]
-ACCEPTED_STOCK_CONDITIONS = ["optimal", "adequate", "at_risk", "critical"]
-ACCEPTED_RISK_LEVELS = ["low", "medium", "high"]
+# values required by business_rules.py
+BUSINESS_AI_VALUES = {
+    "demand_level": {"low", "medium", "high"},
+    "demand_trend": {"stable", "increasing", "decreasing"},
+    "stock_condition": {"healthy", "at_risk", "critical"},
+    "stockout_risk": {"low", "medium", "high"},
+    "supply_risk": {"low", "medium", "high"},
+}
 
 # Allowed answers for each question
 ALLOWED_ANSWERS = { 
