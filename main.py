@@ -17,7 +17,6 @@ def main():
 
         elif choice == "4":
             print("View previous procurement recommendations.")
-            break
 
         elif choice == "5":
             print("Exiting application.")
