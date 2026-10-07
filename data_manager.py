@@ -125,3 +125,16 @@ def add_record(records, record, id_field):
     records.append(record)
 
     return True, None
+
+def update_record(records, record_id, updates, id_field):
+    record = find_record_by_id(records, record_id, id_field)
+
+    if record is None:
+        return False, f"Record not found: {record_id}"
+
+    if id_field in updates and updates[id_field] !=  record_id:
+        return False, "Record ID cannot be changed."
+
+    record.update(updates)
+
+    return True, None
