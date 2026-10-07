@@ -3,6 +3,10 @@ import os
 
 # --- APP IDENTIFICATION ---
 APP_TITLE = "AI INVENTORY & PROCUREMENT ADVISOR"
+APP_SUBTITLE = "Operational Insight & Procurement Engine"
+LINE_WIDTH = 50
+BANNER_CHAR = "="
+DIVIDER_CHAR = "-"
 
 # --- PERSISTENCE PATHS ---
 DATA_DIR = "data"
