@@ -10,6 +10,7 @@ from data_manager import validate_procurement_record
 from data_manager import find_record_by_id
 from data_manager import add_record
 from data_manager import update_record
+from data_manager import link_procurement_to_item
 
 class TestInventoryRecord(unittest.TestCase):
 
@@ -248,6 +249,45 @@ class TestRecordManagement(unittest.TestCase):
         self.assertFalse(success)
         self.assertEqual(error, "Record ID cannot be changed.")
         self.assertEqual(records[0]["item_id"], "INV001")
+
+    def test_link_procurement_to_existing_item(self):
+        inventory_records = [
+            {"item_id": "INV001", "item_name": "Printer Ribbon"}
+        ]
+
+        procurement_record = {
+            "procurement_id": "PRC001",
+            "item_id": "INV001",
+            "recommended_quantity": 50
+        }
+
+        success, error = link_procurement_to_item(
+            procurement_record,
+            inventory_records
+        )
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+
+    def test_link_procurement_to_missing_item(self):
+        inventory_records = [
+            {"item_id": "INV001", "item_name": "Printer Ribbon"}
+        ]
+
+        procurement_record = {
+            "procurement_id": "PRC002",
+            "item_id": "INV999",
+            "recommended_quantity": 20
+        }
+
+        success, error = link_procurement_to_item(
+            procurement_record,
+            inventory_records
+        )
+
+        self.assertFalse(success)
+        self.assertEqual(error, "Inventory item not found: INV999")
+
 
 if __name__ == "__main__":
     unittest.main()
