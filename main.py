@@ -46,20 +46,16 @@ def add_inventory_record():
     else:
         print("\n[ERROR] Failed to save inventory record.")
 
-def view_inventory_records():
-    records = file_manager.load_records(INVENTORY_FILE)
-    
-    if not records:
-        ui_manager.display_inventory_records(records)
-        return
 
+
+# --- Temporary UI schema adapter --- Start
+def prepare_records_for_display(records):
     display_records = []
 
     for record in records:
-        # Temporary adapter for current UI/data schema mismatch.
         # UI expects "item" and "category", while data_manager stores "item_name"
         # and currently does not store "category".
-        # TODO: Remove this adapter once the final shared inventory schema is adapted.
+        # TODO: Remove once the final shared inventory schema is agreed.
         display_record = {
             "item": record["item_name"],
             "category": record.get("category", "General"),
@@ -67,6 +63,19 @@ def view_inventory_records():
         }
 
         display_records.append(display_record)
+
+    return display_records
+
+# --- Temporary UI schema adapter --- End
+
+def view_inventory_records():
+    records = file_manager.load_records(INVENTORY_FILE)
+
+    if not records:
+        ui_manager.display_inventory_records(records)
+        return
+
+    display_records = prepare_records_for_display(records)
 
     ui_manager.display_inventory_records(display_records)
     #######        
@@ -77,8 +86,11 @@ def run_inventory_analysis():
     if not records:
         print("\nNo inventory records found.")
         return
-
-    ui_manager.display_inventory_records(records)
+    
+    #  --- Temporary UI schema adapter ---
+    display_records = prepare_records_for_display(records)
+    # ---
+    ui_manager.display_inventory_records(display_records)
 
     choice = input("\nEnter the inventory record number to analyse: ").strip()
 
@@ -94,6 +106,8 @@ def run_inventory_analysis():
 
     inventory = records[index]
 
+    # AI integration is implemented but requires GEMINI_API_KEY to run.
+    # TODO: Test with a valid API key before final integration testing.
     ai_assessment, error = ai_manager.get_ai_analysis(inventory)
 
     if error:
