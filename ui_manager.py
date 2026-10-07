@@ -55,4 +55,66 @@ def display_inventory_records(records): # displays saved inventory records
     print("\n--- STORED INVENTORY RECORDS ---")
     for idx, item in enumerate(records, start=1):
         print(f"[{idx}] {item['item']} | Category: {item['category']} | Stock: {item['current_stock']} units")
-        
+
+def display_full_procurement_report(inventory, ai_assessment, analysis_result): # renders complete analysis output and metrics
+    print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
+    print(f"{config.APP_TITLE:^{config.LINE_WIDTH}}")
+    print(config.BANNER_CHAR * config.LINE_WIDTH)
+    print(f"Item Name: {inventory['item']} ({inventory['category']})")
+
+    # quantitative inventory data
+    print("\n[Inventory Data]")
+    print(config.DIVIDER_CHAR * 30)
+    print(f"Current Stock:      {inventory['current_stock']} units")
+    print(f"Weekly Usage:       {inventory['avg_weekly_usage']} units")
+    print(f"Supplier Lead Time: {inventory['supplier_lead_time']} weeks")
+    print(f"Stock Coverage:     {analysis_result.get('stock_coverage', 0.0):.1f} weeks")
+
+    # ai assessment
+    print("\n[AI Assessment]")
+    print(config.DIVIDER_CHAR * 30)
+    print(f"Demand Level:       {ai_assessment.get('demand_level', 'N/A').upper()}")
+    print(f"Demand Trend:       {ai_assessment.get('demand_trend', 'N/A').upper()}")
+    print(f"Stock Condition:    {ai_assessment.get('stock_condition', 'N/A').upper()}")
+    print(f"Stockout Risk:      {ai_assessment.get('stockout_risk', 'N/A').upper()}")
+
+    # procurement analysis calculations
+    print("\n[Procurement Analysis]")
+    print(config.DIVIDER_CHAR * 30)
+    print(f"Reorder Point:      {analysis_result.get('reorder_point', 0)} units")
+    print(f"Recommended Order:  {analysis_result.get('recommended_order', 0)} units")
+    print(f"Estimated Cost:     ${analysis_result.get('estimated_cost', 0.0):.2f}")
+    print(f"Available Budget:   ${inventory['available_budget']:.2f}")
+
+    # decision output and priority
+    print("\n[Final Decision]")
+    print(config.DIVIDER_CHAR * 30)
+    print(f"Priority:           {analysis_result.get('priority', 'NORMAL')}")
+    print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
+    print(f"Budget Escalation:  {analysis_result.get('budget_escalation', 'NOT REQUIRED')}")
+    print(config.BANNER_CHAR * config.LINE_WIDTH)
+
+def prompt_user_approval(): # prompts user to approve or reject the generated procurement decision
+    while True:
+        choice = input("\nDo you APPROVE this recommendation? (Y/N): ").strip().upper()
+        if choice in ['Y', 'YES']:
+            print("\n[STATUS] Procurement recommendation APPROVED and queued for persistence.")
+            return "APPROVED"
+        elif choice in ['N', 'NO']:
+            reason = input("Enter reason for rejection/overriding decision: ").strip()
+            print(f"\n[STATUS] Procurement recommendation REJECTED. (Reason: {reason})")
+            return f"REJECTED: {reason}"
+        else:
+            print("Invalid response. Please enter 'Y' for Yes or 'N' for No.")
+
+def display_previous_recommendations(history): # displays log of previous decisions
+    print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
+    print(" PREVIOUS RECOMMENDATIONS & DECISIONS ")
+    print(config.DIVIDER_CHAR * config.LINE_WIDTH)
+    
+    if not history:
+        print("No previous recommendations recorded.")
+        return
+
+    for idx, rec in enumerate(history, start=1):
+        print(f"[{idx}] Item: {rec['item']} | Priority: {rec['priority']} | Decision Status: {rec['approval_status']}")
