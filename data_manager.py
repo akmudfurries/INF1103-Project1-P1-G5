@@ -138,3 +138,11 @@ def update_record(records, record_id, updates, id_field):
     record.update(updates)
 
     return True, None
+
+def link_procurement_to_item(procurement_record, inventory_records):
+    item_id = procurement_record.get("item_id")
+
+    if find_record_by_id(inventory_records, item_id, "item_id"):
+        return True, None
+
+    return False, f"Inventory item not found: {item_id}"
