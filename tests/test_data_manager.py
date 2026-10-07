@@ -9,6 +9,7 @@ from data_manager import validate_procurement_record
 
 from data_manager import find_record_by_id
 from data_manager import add_record
+from data_manager import update_record
 
 class TestInventoryRecord(unittest.TestCase):
 
@@ -190,6 +191,63 @@ class TestRecordManagement(unittest.TestCase):
         self.assertFalse(success)
         self.assertEqual(error, "Record is missing its ID.")
         self.assertEqual(len(records), 1)
+
+    def test_update_existing_record(self):
+        records = [
+            {
+                "item_id": "INV001",
+                "item_name": "Printer Ribbon",
+                "current_stock": 42
+            }
+        ]
+
+        updates = {
+            "current_stock": 30
+        }
+
+        success, error = update_record(records, "INV001", updates, "item_id")
+
+        self.assertTrue(success)
+        self.assertIsNone(error)
+        self.assertEqual(records[0]["current_stock"], 30)
+
+    def test_update_missing_record(self):
+        records = [
+            {
+                "item_id": "INV001",
+                "item_name": "Printer Ribbon",
+                "current_stock": 42
+            }
+        ]
+
+        updates = {
+            "current_stock": 30
+        }
+
+        success, error = update_record(records, "INV999", updates, "item_id")
+
+        self.assertFalse(success)
+        self.assertEqual(error, "Record not found: INV999")
+        self.assertEqual(records[0]["current_stock"], 42)
+
+    def test_update_record_id(self):
+        records = [
+            {
+                "item_id": "INV001",
+                "item_name": "Printer Ribbon",
+                "current_stock": 42
+            }
+        ]
+
+        updates = {
+            "item_id": "INV999"
+        }
+
+        success, error = update_record(records, "INV001", updates, "item_id")
+
+        self.assertFalse(success)
+        self.assertEqual(error, "Record ID cannot be changed.")
+        self.assertEqual(records[0]["item_id"], "INV001")
 
 if __name__ == "__main__":
     unittest.main()
