@@ -146,3 +146,13 @@ def link_procurement_to_item(procurement_record, inventory_records):
         return True, None
 
     return False, f"Inventory item not found: {item_id}"
+
+def get_records_for_item(records, item_id):
+    matching_records = []
+
+    for record in records:
+        if record.get("item_id") == item_id:
+            matching_records.append(record)
+    
+    return matching_records
+    
