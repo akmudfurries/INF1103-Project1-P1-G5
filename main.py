@@ -21,7 +21,7 @@ def add_inventory_record():
             # data_manager requires "weekly_usage", so the following is temporarily used as the ID.
             weekly_usage=inventory_input["avg_weekly_usage"],
             # data_manager requires "lead_time_weeks", so the following is temporarily used as the ID.
-            
+
             lead_time_weeks=inventory_input["supplier_lead_time"],
             operational_notes=inventory_input["operational_notes"]
         )
@@ -48,8 +48,28 @@ def add_inventory_record():
 
 def view_inventory_records():
     records = file_manager.load_records(INVENTORY_FILE)
+    
+    if not records:
+        ui_manager.display_inventory_records(records)
+        return
 
-    ui_manager.display_inventory_records(records)        
+    display_records = []
+
+    for record in records:
+        # Temporary adapter for current UI/data schema mismatch.
+        # UI expects "item" and "category", while data_manager stores "item_name"
+        # and currently does not store "category".
+        # TODO: Remove this adapter once the final shared inventory schema is adapted.
+        display_record = {
+            "item": record["item_name"],
+            "category": record.get("category", "General"),
+            "current_stock": record["current_stock"]
+        }
+
+        display_records.append(display_record)
+
+    ui_manager.display_inventory_records(display_records)
+    #######        
 
 def run_inventory_analysis():
     records = file_manager.load_records(INVENTORY_FILE)
