@@ -125,3 +125,34 @@ def add_record(records, record, id_field):
     records.append(record)
 
     return True, None
+
+def update_record(records, record_id, updates, id_field):
+    record = find_record_by_id(records, record_id, id_field)
+
+    if record is None:
+        return False, f"Record not found: {record_id}"
+
+    if id_field in updates and updates[id_field] !=  record_id:
+        return False, "Record ID cannot be changed."
+
+    record.update(updates)
+
+    return True, None
+
+def link_procurement_to_item(procurement_record, inventory_records):
+    item_id = procurement_record.get("item_id")
+
+    if find_record_by_id(inventory_records, item_id, "item_id"):
+        return True, None
+
+    return False, f"Inventory item not found: {item_id}"
+
+def get_records_for_item(records, item_id):
+    matching_records = []
+
+    for record in records:
+        if record.get("item_id") == item_id:
+            matching_records.append(record)
+    
+    return matching_records
+    

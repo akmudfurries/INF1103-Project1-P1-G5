@@ -11,6 +11,9 @@ from data_manager import validate_procurement_record
 
 from data_manager import find_record_by_id
 from data_manager import add_record
+from data_manager import update_record
+from data_manager import link_procurement_to_item
+from data_manager import get_records_for_item
 
 # =====================================================================
 # Inventory Record Tests
@@ -234,3 +237,129 @@ def test_add_missing_id():
     assert success is False
     assert error == "Record is missing its ID."
     assert len(records) == 1
+
+def test_update_existing_record():
+    records = [
+        {
+            "item_id": "INV001",
+            "item_name": "Printer Ribbon",
+            "current_stock": 42
+        }
+    ]
+
+    updates = {
+        "current_stock": 30
+    }
+
+    success, error = update_record(records, "INV001", updates, "item_id")
+
+    assert success is True
+    assert error is None
+    assert records[0]["current_stock"] == 30
+
+def test_update_missing_record():
+    records = [
+        {
+            "item_id": "INV001",
+            "item_name": "Printer Ribbon",
+            "current_stock": 42
+        }
+    ]
+
+    updates = {
+        "current_stock": 30
+    }
+
+    success, error = update_record(records, "INV999", updates, "item_id")
+
+    assert success is False
+    assert error == "Record not found: INV999"
+    assert records[0]["current_stock"] == 42
+
+def test_update_record_id():
+    records = [
+        {
+            "item_id": "INV001",
+            "item_name": "Printer Ribbon",
+            "current_stock": 42
+        }
+    ]
+
+    updates = {
+        "item_id": "INV999"
+    }
+
+    success, error = update_record(records, "INV001", updates, "item_id")
+
+    assert success is False
+    assert error == "Record ID cannot be changed."
+    assert records[0]["item_id"] == "INV001"
+
+def test_link_procurement_to_existing_item():
+    inventory_records = [
+        {"item_id": "INV001", "item_name": "Printer Ribbon"}
+    ]
+
+    procurement_record = {
+        "procurement_id": "PRC001",
+        "item_id": "INV001",
+        "recommended_quantity": 50
+    }
+
+    success, error = link_procurement_to_item(
+        procurement_record,
+        inventory_records
+    )
+
+    assert success is True
+    assert error is None
+
+def test_link_procurement_to_missing_item():
+    inventory_records = [
+        {"item_id": "INV001", "item_name": "Printer Ribbon"}
+    ]
+
+    procurement_record = {
+        "procurement_id": "PRC002",
+        "item_id": "INV999",
+        "recommended_quantity": 20
+    }
+
+    success, error = link_procurement_to_item(
+        procurement_record,
+        inventory_records
+    )
+
+    assert success is False
+    assert error == "Inventory item not found: INV999"
+
+def test_get_records_for_existing_item():
+    records = [
+        {"procurement_id": "PRC001", "item_id": "INV001"},
+        {"procurement_id": "PRC002", "item_id": "INV002"},
+        {"procurement_id": "PRC003", "item_id": "INV001"}
+    ]
+
+    result = get_records_for_item(records, "INV001")
+
+    assert len(result) == 2
+    assert result[0]["procurement_id"] == "PRC001"
+    assert result[1]["procurement_id"] == "PRC003"
+
+def test_get_records_for_missing_item():
+    records = [
+        {"procurement_id": "PRC001", "item_id": "INV001"}
+    ]
+
+    result = get_records_for_item(records, "INV999")
+
+    assert result == []
+
+def test_get_records_for_missing_item():
+    records = [
+        {"procurement_id": "PRC001", "item_id": "INV001"}
+    ]
+
+    result = get_records_for_item(records, "INV999")
+
+    assert result == []
