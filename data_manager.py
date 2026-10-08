@@ -66,13 +66,15 @@ def build_procurement_record(
     item_id,
     recommended_quantity,
     priority,
-    action
+    action,
+    approval_status
 ):
     record = {
         "item_id": item_id,
         "recommended_quantity": recommended_quantity,
         "priority": priority,
-        "action": action
+        "action": action,
+        "approval_status": approval_status
     }
 
     validate_procurement_record(record)
@@ -80,7 +82,13 @@ def build_procurement_record(
     return record
 
 def validate_procurement_record(record):
-    required_fields = ["item_id", "recommended_quantity", "priority", "action"]
+    required_fields = [
+        "item_id", 
+        "recommended_quantity", 
+        "priority", 
+        "action", 
+        "approval_status"
+    ]
 
     if not isinstance(record, dict):
         raise ValueError("Procurement record must be a dictionary.")
@@ -105,6 +113,9 @@ def validate_procurement_record(record):
     if not isinstance(record["action"], str) or not record["action"].strip():
         raise ValueError("action must be a non-empty string.")
 
+    if not isinstance(record["approval_status"], str) or not record["approval_status"].strip():
+        raise ValueError("approval_status must be a non-empty string.")
+    
     return True
 
 def find_record_by_id(records, record_id, id_field):

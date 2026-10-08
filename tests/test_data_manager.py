@@ -88,20 +88,23 @@ def test_build_valid_procurement_record():
         "INV001",
         50,
         "HIGH",
-        "REORDER"
+        "REORDER",
+        "PENDING"
     )
 
     assert record["item_id"] == "INV001"
     assert record["recommended_quantity"] == 50
     assert record["priority"] == "HIGH"
     assert record["action"] == "REORDER"
+    assert record["approval_status"] == "PENDING"
 
 
 def test_missing_procurement_field():
     record = {
         "item_id": "INV001",
         "recommended_quantity": 50,
-        "priority": "HIGH"
+        "priority": "HIGH",
+        "approval_status": "PENDING"
     }
 
     try:
@@ -117,7 +120,8 @@ def test_negative_recommended_quantity():
             "INV001",
             -10,
             "HIGH",
-            "REORDER"
+            "REORDER",
+            "PENDING"
         )
         assert False, "Expected ValueError for negative quantity"
     except ValueError:
@@ -130,7 +134,8 @@ def test_invalid_procurement_item_id():
             "",
             50,
             "HIGH",
-            "REORDER"
+            "REORDER",
+            "PENDING"
         )
         assert False, "Expected ValueError for invalid item ID"
     except ValueError:
@@ -143,7 +148,8 @@ def test_invalid_priority():
             "INV001",
             50,
             "",
-            "REORDER"
+            "REORDER",
+            "PENDING"
         )
         assert False, "Expected ValueError for invalid priority"
     except ValueError:
@@ -156,7 +162,8 @@ def test_invalid_action():
             "INV001",
             50,
             "HIGH",
-            ""
+            "",
+            "PENDING"
         )
         assert False, "Expected ValueError for invalid action"
     except ValueError:
