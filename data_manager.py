@@ -166,4 +166,12 @@ def get_records_for_item(records, item_id):
             matching_records.append(record)
     
     return matching_records
-    
+
+def create_procurement_from_business_rule(item_id, business_rule_output, approval_status):
+    return build_procurement_record(
+        item_id, 
+        business_rule_output["recommended_quantity"],
+        business_rule_output["priority"],
+        business_rule_output["action"],
+        approval_status
+    )
