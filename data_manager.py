@@ -66,13 +66,15 @@ def build_procurement_record(
     item_id,
     recommended_quantity,
     priority,
-    action
+    action,
+    approval_status
 ):
     record = {
         "item_id": item_id,
         "recommended_quantity": recommended_quantity,
         "priority": priority,
-        "action": action
+        "action": action,
+        "approval_status": approval_status
     }
 
     validate_procurement_record(record)
@@ -80,7 +82,13 @@ def build_procurement_record(
     return record
 
 def validate_procurement_record(record):
-    required_fields = ["item_id", "recommended_quantity", "priority", "action"]
+    required_fields = [
+        "item_id", 
+        "recommended_quantity", 
+        "priority", 
+        "action", 
+        "approval_status"
+    ]
 
     if not isinstance(record, dict):
         raise ValueError("Procurement record must be a dictionary.")
@@ -105,6 +113,9 @@ def validate_procurement_record(record):
     if not isinstance(record["action"], str) or not record["action"].strip():
         raise ValueError("action must be a non-empty string.")
 
+    if not isinstance(record["approval_status"], str) or not record["approval_status"].strip():
+        raise ValueError("approval_status must be a non-empty string.")
+    
     return True
 
 def find_record_by_id(records, record_id, id_field):
@@ -125,3 +136,42 @@ def add_record(records, record, id_field):
     records.append(record)
 
     return True, None
+
+def update_record(records, record_id, updates, id_field):
+    record = find_record_by_id(records, record_id, id_field)
+
+    if record is None:
+        return False, f"Record not found: {record_id}"
+
+    if id_field in updates and updates[id_field] !=  record_id:
+        return False, "Record ID cannot be changed."
+
+    record.update(updates)
+
+    return True, None
+
+def link_procurement_to_item(procurement_record, inventory_records):
+    item_id = procurement_record.get("item_id")
+
+    if find_record_by_id(inventory_records, item_id, "item_id"):
+        return True, None
+
+    return False, f"Inventory item not found: {item_id}"
+
+def get_records_for_item(records, item_id):
+    matching_records = []
+
+    for record in records:
+        if record.get("item_id") == item_id:
+            matching_records.append(record)
+    
+    return matching_records
+
+def create_procurement_from_business_rule(item_id, business_rule_output, approval_status):
+    return build_procurement_record(
+        item_id, 
+        business_rule_output["recommended_quantity"],
+        business_rule_output["priority"],
+        business_rule_output["action"],
+        approval_status
+    )
