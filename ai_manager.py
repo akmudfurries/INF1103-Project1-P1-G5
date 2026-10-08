@@ -5,6 +5,17 @@
 import json
 from config import ALLOWED_ANSWERS, MAX_RETRIES
 
+def ai_error(error): # Turns Gemini error into text
+    text = str(error).lower()
+    if "api key" in text:
+        return "AI is not set up. Check your API key."
+    if "503" in text or "unavailable" in text:
+        return "Gemini is busy. Try again later."
+    if "429" in text:
+        return "AI usage limit reached. Try again later."
+    if "timed out" in text or "timeout" in text:
+        return "Gemini took too long to respond."
+    return "Could not reach AI."
 
 def ai_prompt(item: dict):
     prompt = "Read these inventory notes and answer with only a JSON object.\n"
@@ -16,7 +27,6 @@ def ai_prompt(item: dict):
     prompt = prompt + "Notes: " + item["operational_notes"] + "\n"
     return prompt
 
-
 #Read these inventory notes and answer with ONLY a JSON object.
 #Use exactly these keys and only these answers:
 # - demand_level: one of low, medium, high
@@ -27,10 +37,15 @@ def ai_prompt(item: dict):
 #Item: Printer Ribbon
 #Notes: Usage has gone up a lot and the supplier was late twice.
 
-
 def ask_gemini(prompt: str): #Send the prompt to GEMINI.
     from google import genai
-    client = genai.Client()   # reads GEMINI_API_KEY
+    from google.genai import types
+    client = genai.Client(
+        http_options=types.HttpOptions(
+            timeout=30000, # 30 sec time limit
+            retry_options=types.HttpRetryOptions(attempts=1) # Dont Retry, Push to Ai Analaysis 
+            ),
+        )   # Reads API key, 
     response = client.models.generate_content(
         model="gemini-3.8-flash",
         contents=prompt,
@@ -39,12 +54,14 @@ def ask_gemini(prompt: str): #Send the prompt to GEMINI.
     return response.text
 
 def extract_ai_response(ai_reply: str): # Turns Answer into a Dict
-    text = ai_reply.replace("```json", "") #Replace JSON block
+    if not isinstance(ai_reply, str) or not ai_reply.strip(): # No reply or empty reply
+        return None
+    text = ai_reply.replace("```json", "") # Replace JSON block
     text = text.replace("```", "")
     text = text.strip()
     try:
         answer = json.loads(text) # Change AI text to dictionary
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, RecursionError):
         return None         
     if type(answer) != dict:
         return None
@@ -58,10 +75,12 @@ def check_ai_response(answer: dict):
         ai_response = answer[question]
         if type(ai_response) != str: # Check if got numbers 
             return False, question + " is not text"
-        if ai_response.lower() not in ALLOWED_ANSWERS[question]: # Check if its the allowed Value
+        if ai_response.lower() not in ALLOWED_ANSWERS[question]: # Check if its the allowed value
             return False, question + " has an invalid answer: " + ai_response
+        answer[question] = ai_response.lower() # Save as lowercase
         
-    if "reason" not in answer or str(answer["reason"]).strip() == "": # Missing reason
+    reason = answer.get("reason") 
+    if not isinstance(reason, str) or not reason.strip(): # Not text or Empty return false
         return False, "missing reason"
 
     return True, "no error"
@@ -73,7 +92,7 @@ def get_ai_analysis(item: dict, ask_function=ask_gemini): # Runs every step
         try:
             ai_reply = ask_function(prompt)
         except Exception as error:
-            issue = "could not reach AI: " + str(error)
+            issue = ai_error(error) # Make the Error readable
             continue 
         answer = extract_ai_response(ai_reply)
         if answer is None:
