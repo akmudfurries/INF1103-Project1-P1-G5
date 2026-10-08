@@ -17,16 +17,15 @@ DECISIONS_FILE = os.path.join(DATA_DIR, "procurement_decisions.json")
 BUSINESS_AI_VALUES = {
     "demand_level": {"low", "medium", "high"},
     "demand_trend": {"stable", "increasing", "decreasing"},
-    "stock_condition": {"healthy", "at_risk", "critical"},
-    "stockout_risk": {"low", "medium", "high"},
     "supply_risk": {"low", "medium", "high"},
+    "operational_importance": {"low", "medium", "high"},
 }
 
 # Allowed answers for each question
 ALLOWED_ANSWERS = { 
     "demand_level": ["low", "medium", "high"],
-    "demand_trend": ["decreasing", "stable", "increasing"],
-    "supplier_issue": ["none", "potential", "significant"],
+    "demand_trend": ["stable", "increasing", "decreasing"],
+    "supply_risk": ["low", "medium", "high"],
     "operational_importance": ["low", "medium", "high"],
  }
 
