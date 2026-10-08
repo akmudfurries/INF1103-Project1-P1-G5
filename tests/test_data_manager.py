@@ -16,6 +16,8 @@ from data_manager import link_procurement_to_item
 from data_manager import get_records_for_item
 from data_manager import create_procurement_from_business_rule
 
+from file_manager import save_records, load_records
+
 # =====================================================================
 # Inventory Record Tests
 # =====================================================================
@@ -394,3 +396,22 @@ def test_create_procurement_from_business_rule():
     assert record["priority"] == "HIGH"
     assert record["action"] == "REORDER"
     assert record["approval_status"] == "PENDING"
+
+def test_inventory_record_persistence(tmp_path):
+    record = build_inventory_record(
+        "INV001",
+        "Industrial Printer Ribbon",
+        42,
+        15,
+        2, 
+        "Demand increased recently."
+    )
+
+    file_path = str(tmp_path / "inventory.json")
+
+    save_records(file_path, [record])
+
+    loaded_records = load_records(file_path)
+
+    assert len(loaded_records) == 1
+    assert loaded_records[0] == record
