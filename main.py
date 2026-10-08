@@ -117,7 +117,7 @@ def run_inventory_analysis():
     print("\n[AI ANALYSIS]")
     print(f"Demand Level: {ai_assessment['demand_level']}")
     print(f"Demand Trend: {ai_assessment['demand_trend']}")
-    print(f"Supplier Issue: {ai_assessment['supplier_issue']}")
+    print(f"Supplier Issue: {ai_assessment['supply_risk']}")
     print(f"Operational Importance: {ai_assessment['operational_importance']}")
     print(f"Reason: {ai_assessment['reason']}")
 
