@@ -451,3 +451,59 @@ def test_store_approval_status_and_procurement_decision(tmp_path):
     assert loaded_records[0]["approval_status"] == "APPROVED"
     assert loaded_records[0]["recommended_quantity"] == 50
     assert loaded_records[0]["action"] == "REORDER"
+
+def test_manage_extended_inventory_data():
+    records = []
+
+    extended_record = {
+        "item_id": "INV001",
+        "item_name": "Industrial Printer Ribbon",
+        "current_stock": 42,
+        "weekly usage": 15,
+        "lead_time_weeks": 2,
+        "operational_notes": "Demand increased recently",
+        "safety_stock": 15,
+        "moq": 50,
+        "unit_cost": 12.00,
+        "budget": 500.00,
+        "stock_coverage": 2.8,
+        "reorder_point": 45
+    }
+
+    success, error = add_record(
+        records, 
+        extended_record,
+        "item_id"
+    )
+
+    assert success is True
+    assert error is None
+
+    updates = {
+        "moq": 60,
+        "budget": 600.00,
+        "safety_stock": 20
+    }
+
+    success, error = update_record(
+        records,
+        "INV001",
+        updates,
+        "item_id"
+    )
+
+    assert success is True
+    assert error is None
+
+    record = find_record_by_id(
+        records,
+        "INV001",
+        "item_id"
+    )
+
+    assert record["moq"] == 60
+    assert record["budget"] == 600.00
+    assert record["safety_stock"] == 20
+    assert record["unit_cost"] == 12.00
+    assert record["stock_coverage"] == 2.8
+    assert record["reorder_point"] == 45
