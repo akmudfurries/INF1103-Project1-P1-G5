@@ -113,8 +113,12 @@ def validate_procurement_record(record):
     if not isinstance(record["action"], str) or not record["action"].strip():
         raise ValueError("action must be a non-empty string.")
 
-    if not isinstance(record["approval_status"], str) or not record["approval_status"].strip():
-        raise ValueError("approval_status must be a non-empty string.")
+    valid_statuses = {"PENDING", "APPROVED", "REJECTED"}
+
+    if record["approval_status"] not in valid_statuses:
+        raise ValueError(
+            f"approval_status must be one of {sorted(valid_statuses)}."
+        )
     
     return True
 
