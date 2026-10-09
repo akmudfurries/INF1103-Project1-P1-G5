@@ -415,3 +415,39 @@ def test_inventory_record_persistence(tmp_path):
 
     assert len(loaded_records) == 1
     assert loaded_records[0] == record
+
+def test_store_approval_status_and_procurement_decision(tmp_path):
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    updates = {
+        "approval_status": "APPROVED"
+    }
+
+    success, error = update_record(
+        records,
+        "INV001",
+        updates,
+        "item_id"
+    )
+
+    assert success is True
+    assert error is None
+    assert records[0]["approval_status"] == "APPROVED"
+
+    file_path = str(tmp_path / "procurement.json")
+
+    save_records(file_path, records)
+
+    loaded_records = load_records(file_path)
+
+    assert loaded_records[0]["approval_status"] == "APPROVED"
+    assert loaded_records[0]["recommended_quantity"] == 50
+    assert loaded_records[0]["action"] == "REORDER"

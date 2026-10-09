@@ -7,6 +7,7 @@ APP_SUBTITLE = "Operational Insight & Procurement Engine"
 LINE_WIDTH = 50
 BANNER_CHAR = "="
 DIVIDER_CHAR = "-"
+MAX_RETRIES = 3
 
 # --- PERSISTENCE PATHS ---
 DATA_DIR = "data"
@@ -28,5 +29,3 @@ ALLOWED_ANSWERS = {
     "supply_risk": ["low", "medium", "high"],
     "operational_importance": ["low", "medium", "high"],
  }
-
-MAX_RETRIES = 3 # Max retries by AI before giving up, Total 4 attempts
