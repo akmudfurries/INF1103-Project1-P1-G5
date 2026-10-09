@@ -14,6 +14,9 @@ from data_manager import add_record
 from data_manager import update_record
 from data_manager import link_procurement_to_item
 from data_manager import get_records_for_item
+from data_manager import create_procurement_from_business_rule
+
+from file_manager import save_records, load_records
 
 # =====================================================================
 # Inventory Record Tests
@@ -88,20 +91,23 @@ def test_build_valid_procurement_record():
         "INV001",
         50,
         "HIGH",
-        "REORDER"
+        "REORDER",
+        "PENDING"
     )
 
     assert record["item_id"] == "INV001"
     assert record["recommended_quantity"] == 50
     assert record["priority"] == "HIGH"
     assert record["action"] == "REORDER"
+    assert record["approval_status"] == "PENDING"
 
 
 def test_missing_procurement_field():
     record = {
         "item_id": "INV001",
         "recommended_quantity": 50,
-        "priority": "HIGH"
+        "priority": "HIGH",
+        "approval_status": "PENDING"
     }
 
     try:
@@ -117,7 +123,8 @@ def test_negative_recommended_quantity():
             "INV001",
             -10,
             "HIGH",
-            "REORDER"
+            "REORDER",
+            "PENDING"
         )
         assert False, "Expected ValueError for negative quantity"
     except ValueError:
@@ -130,7 +137,8 @@ def test_invalid_procurement_item_id():
             "",
             50,
             "HIGH",
-            "REORDER"
+            "REORDER",
+            "PENDING"
         )
         assert False, "Expected ValueError for invalid item ID"
     except ValueError:
@@ -143,7 +151,8 @@ def test_invalid_priority():
             "INV001",
             50,
             "",
-            "REORDER"
+            "REORDER",
+            "PENDING"
         )
         assert False, "Expected ValueError for invalid priority"
     except ValueError:
@@ -156,7 +165,8 @@ def test_invalid_action():
             "INV001",
             50,
             "HIGH",
-            ""
+            "",
+            "PENDING"
         )
         assert False, "Expected ValueError for invalid action"
     except ValueError:
@@ -295,6 +305,10 @@ def test_update_record_id():
     assert error == "Record ID cannot be changed."
     assert records[0]["item_id"] == "INV001"
 
+# =====================================================================
+# Procurement Tests
+# =====================================================================
+
 def test_link_procurement_to_existing_item():
     inventory_records = [
         {"item_id": "INV001", "item_name": "Printer Ribbon"}
@@ -363,3 +377,41 @@ def test_get_records_for_missing_item():
     result = get_records_for_item(records, "INV999")
 
     assert result == []
+
+def test_create_procurement_from_business_rule():
+    business_rule_output = {
+        "recommended_quantity": 50,
+        "priority": "HIGH",
+        "action": "REORDER"
+    }
+
+    record = create_procurement_from_business_rule(
+        "INV001",
+        business_rule_output,
+        "PENDING"
+    )
+
+    assert record["item_id"] == "INV001"
+    assert record["recommended_quantity"] == 50
+    assert record["priority"] == "HIGH"
+    assert record["action"] == "REORDER"
+    assert record["approval_status"] == "PENDING"
+
+def test_inventory_record_persistence(tmp_path):
+    record = build_inventory_record(
+        "INV001",
+        "Industrial Printer Ribbon",
+        42,
+        15,
+        2, 
+        "Demand increased recently."
+    )
+
+    file_path = str(tmp_path / "inventory.json")
+
+    save_records(file_path, [record])
+
+    loaded_records = load_records(file_path)
+
+    assert len(loaded_records) == 1
+    assert loaded_records[0] == record
