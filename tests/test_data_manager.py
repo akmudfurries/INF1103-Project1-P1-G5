@@ -172,6 +172,29 @@ def test_invalid_action():
     except ValueError:
         pass
 
+def test_invalid_approval_status():
+    with pytest.raises(ValueError, match="approval_status"):
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "MAYBE"
+        )
+
+
+def test_approval_status_values():
+    for status in ["PENDING", "APPROVED", "REJECTED"]:
+        record = build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            status
+        )
+
+        assert record["approval_status"] == status
+
 # =====================================================================
 # Record Management Tests
 # =====================================================================
@@ -360,14 +383,6 @@ def test_get_records_for_existing_item():
     assert result[0]["procurement_id"] == "PRC001"
     assert result[1]["procurement_id"] == "PRC003"
 
-def test_get_records_for_missing_item():
-    records = [
-        {"procurement_id": "PRC001", "item_id": "INV001"}
-    ]
-
-    result = get_records_for_item(records, "INV999")
-
-    assert result == []
 
 def test_get_records_for_missing_item():
     records = [
