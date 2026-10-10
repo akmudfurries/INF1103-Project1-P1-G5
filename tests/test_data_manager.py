@@ -15,6 +15,7 @@ from data_manager import update_record
 from data_manager import link_procurement_to_item
 from data_manager import get_records_for_item
 from data_manager import create_procurement_from_business_rule
+from data_manager import update_procurement_record
 
 from file_manager import save_records, load_records
 
@@ -116,6 +117,60 @@ def test_missing_procurement_field():
     except ValueError:
         pass
 
+def test_update_procurement_record_rejected_with_reason():
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    updates = {
+        "approval_status": "REJECTED",
+        "rejection_reason": "Budget exceeded"
+    }
+
+    success, error = update_procurement_record(
+        records,
+        "INV001",
+        updates
+    )
+
+    assert success is True
+    assert error is None
+    assert records[0]["approval_status"] == "REJECTED"
+    assert records[0]["rejection_reason"] == "Budget exceeded"
+
+def test_update_procurement_record_rejected_wihtout_reason():
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    updates = {
+        "approval_status":"REJECTED"
+    }
+
+    success, error = update_procurement_record(
+        records, 
+        "INV001",
+        updates
+    )
+
+    assert success is False
+    assert records[0]["approval_status"] == "PENDING"
+    assert records[0]["rejection_reason"] is None
+
+
+
 
 def test_negative_recommended_quantity():
     try:
@@ -184,7 +239,7 @@ def test_invalid_approval_status():
 
 
 def test_approval_status_values():
-    for status in ["PENDING", "APPROVED", "REJECTED"]:
+    for status in ["PENDING", "APPROVED"]:
         record = build_procurement_record(
             "INV001",
             50,
@@ -194,6 +249,18 @@ def test_approval_status_values():
         )
 
         assert record["approval_status"] == status
+
+    record = build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "REJECTED",
+            "Budget exceeded"
+    )
+
+    assert record["approval_status"] == "REJECTED"
+    assert record["rejection_reason"] == "Budget exceeded"
 
 # =====================================================================
 # Record Management Tests
