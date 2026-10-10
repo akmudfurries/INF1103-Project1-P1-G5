@@ -93,10 +93,17 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     # procurement analysis calculations (ref to business_rules.py)
     print("\n[Procurement Analysis]")
     print(config.DIVIDER_CHAR * 30)
-    print(f"Reorder Point:      {analysis_result.get('reorder_point', 0)} units")
     print(f"Recommended Order:  {analysis_result.get('recommended_quantity', 0)} units")
-    print(f"Estimated Cost:     ${analysis_result.get('estimated_cost', 0.0):.2f}")
-    print(f"Available Budget:   ${analysis_result.get('budget', 0.0):.2f}")
+
+    # Extended metrics are unavailable while extended features are disabled.
+    if "reorder_point" in analysis_result:
+        print(f"Reorder Point:      {analysis_result['reorder_point']} units")
+
+    if "estimated_cost" in analysis_result:
+        print(f"Estimated Cost:     ${analysis_result['estimated_cost']:.2f}")
+
+    if "budget" in analysis_result:
+        print(f"Available Budget:   ${analysis_result['budget']:.2f}")
 
     # decision output and priority
     print("\n[Final Decision]")
@@ -104,8 +111,10 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Priority:           {analysis_result.get('priority', 'NORMAL')}")
     print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
 
-    escalation = "REQUIRED" if analysis_result.get('budget_escalation') else "NOT REQUIRED"
-    print(f"Budget Escalation:  {escalation}")
+    if "budget_escalation" in analysis_result:
+        escalation = "REQUIRED" if analysis_result["budget_escalation"] else "NOT REQUIRED"
+        print(f"Budget Escalation:  {escalation}")
+
     print(config.BANNER_CHAR * config.LINE_WIDTH)
 
 def prompt_user_approval(): # prompts user to approve or reject the generated procurement decision
