@@ -10,6 +10,8 @@ DECISIONS_FILE = "data/procurement_decisions.json"
 
 def add_inventory_record():
     inventory_input = ui_manager.prompt_inventory_record()
+    if not inventory_input:
+        return
 
     try:
         inventory_record = data_manager.build_inventory_record(
@@ -55,7 +57,6 @@ def add_inventory_record():
 def view_inventory_records():
     records = file_manager.load_records(INVENTORY_FILE)
     ui_manager.display_inventory_records(records)
-    return
       
 
 def run_inventory_analysis():
@@ -69,7 +70,9 @@ def run_inventory_analysis():
 
     ui_manager.display_inventory_records(records)
 
-    choice = input("\nEnter the inventory record number to analyse: ").strip()
+    choice = input("\nEnter the inventory record number to analyse (or 'q' to cancel): ").strip()
+    if choice.lower() in ['q', 'quit']:
+        return
 
     if not choice.isdigit():
         print("\n[ERROR] Please enter a valid record number.")
@@ -101,7 +104,7 @@ def run_inventory_analysis():
     # display full report to user (ui)
     ui_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
 
-    # prompt user for approval decision (ui)
+    # prompt user for approval decision n rejection reason (ui)
     approval_status, rejection_reason = ui_manager.prompt_user_approval()
 
     # save procurement decision record (ui)
@@ -145,12 +148,12 @@ def main():
         elif choice == "4":
             view_previous_recommendations()
 
-        elif choice == "5":
+        elif choice in ["5", "q", "quit"]:
             print("Exiting application.")
             break
 
         else:
-            print("Please enter 1, 2, 3, 4 or 5.")
+            print("Please enter 1, 2, 3, 4 or 5, or 'q' to quit.")
 
 if __name__ == "__main__":
     main()

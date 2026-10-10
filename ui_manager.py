@@ -1,4 +1,5 @@
 import config
+import validation
 
 
 def print_header(): # display top app title banner
@@ -7,46 +8,79 @@ def print_header(): # display top app title banner
     print(f"{config.APP_SUBTITLE.center(config.LINE_WIDTH)}")
     print(config.BANNER_CHAR * config.LINE_WIDTH)
 
-
-
-def get_main_menu_choice(): # renders main CLI menu and captures user choice
+def get_main_menu_choice(): # renders main CLI menu with quit and captures user choice
     print("\n [ MAIN MENU ]")
     print("1. Add new inventory record")
     print("2. View stored inventory records")
     print("3. Run inventory analysis")
     print("4. View previous procurement recommendations")
     print("5. Exit")
+    return input("\nSelect an option (1-5), or 'q' to quit: ").strip().lower()
 
-    return input("\nSelect an option (1-5): ").strip()
+def _get_input_or_cancel(prompt_text):
+    # helper to catch 'q' or 'quit' at any prompt.
+    val = input(prompt_text).strip()
+    if val.lower() in ['q', 'quit']:
+        print("\n[!] Operation cancelled by user.")
+        return None
+    return val
 
 def prompt_inventory_record(): # collects raw inventory item input fields
     print("\n" + config.DIVIDER_CHAR * config.LINE_WIDTH)
-    print(" CREATE NEW INVENTORY RECORD ")
+    print(" CREATE NEW INVENTORY RECORD (Type 'q' to cancel) ")
     print(config.DIVIDER_CHAR * config.LINE_WIDTH)
 
-    item_id = input("Item ID / SKU: ").strip()
-    item_name = input("Item Name: ").strip()
-    category = input("Category: ").strip()
-    stock_raw = input("Current Stock (units): ").strip()
-    usage_raw = input("Average Weekly Usage (units): ").strip()
-    lead_raw = input("Supplier Lead Time (weeks): ").strip()
-    moq_raw = input("Minimum Order Quantity (units): ").strip()
-    cost_raw = input("Unit Cost ($): ").strip()
-    budget_raw = input("Available Budget ($): ").strip()
-    notes = input("Operational Notes: ").strip()
+    item = _get_input_or_cancel("Item Name / ID: ")
+    if item is None: return None
 
-# direct type conversion, eg. convert raw string to int or default to 0 if not digit
+    category = _get_input_or_cancel("Category: ")
+    if category is None: return None
+
+    stock_raw = _get_input_or_cancel("Current Stock (units): ")
+    if stock_raw is None: return None
+
+    usage_raw = _get_input_or_cancel("Average Weekly Usage (units): ")
+    if usage_raw is None: return None
+
+    lead_raw = _get_input_or_cancel("Supplier Lead Time (weeks): ")
+    if lead_raw is None: return None
+
+    moq_raw = _get_input_or_cancel("Minimum Order Quantity (units): ")
+    if moq_raw is None: return None
+
+    cost_raw = _get_input_or_cancel("Unit Cost ($): ")
+    if cost_raw is None: return None
+
+    budget_raw = _get_input_or_cancel("Available Budget ($): ")
+    if budget_raw is None: return None
+
+    notes = _get_input_or_cancel("Operational Notes: ")
+    if notes is None: return None
+
+    # validate inputs using validation.py
+    is_valid, errors, parsed = validation.validate_inventory_fields(
+        item, category, stock_raw, usage_raw, lead_raw, moq_raw, cost_raw, budget_raw, notes
+    )
+
+    if not is_valid:
+        print("\n[!] Input Validation Failed:")
+        for err in errors:
+            print(f"  - {err}")
+        print("[!] Record creation aborted. Please try again.")
+        return None
+
+# mapped keys matching team schema
     return { 
-        "item_id": item_id if item_id else "ITEM_001",
-        "item_name": item_name if item_name else "Unnamed Item",
-        "category": category if category else "General",
-        "current_stock": int(stock_raw) if stock_raw.isdigit() else 0,
-        "weekly_usage": float(usage_raw) if usage_raw.replace('.', '', 1).isdigit() else 0.0,
-        "lead_time_weeks": int(lead_raw) if lead_raw.isdigit() else 0,
-        "moq": int(moq_raw) if moq_raw.isdigit() else 0,
-        "unit_cost": float(cost_raw) if cost_raw.replace('.', '', 1).isdigit() else 0.0,
-        "budget": float(budget_raw) if budget_raw.replace('.', '', 1).isdigit() else 0.0,
-        "operational_notes": notes if notes else "N/A"
+        "item_id": item,
+        "item_name": item,
+        "category": category,
+        "current_stock": parsed["Current Stock"],
+        "weekly_usage": parsed["Average Weekly Usage"],
+        "lead_time_weeks": parsed["Supplier Lead Time"],
+        "moq": parsed["Minimum Order Quantity"],
+        "unit_cost": parsed["Unit Cost"],
+        "budget": parsed["Available Budget"],
+        "operational_notes": notes
     }
 
 def display_inventory_records(records): # displays saved inventory records
@@ -95,7 +129,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(config.DIVIDER_CHAR * 30)
     print(f"Recommended Order:  {analysis_result.get('recommended_quantity', 0)} units")
 
-    # Extended metrics are unavailable while extended features are disabled.
+    # Extended metrics conditional filter
     if "reorder_point" in analysis_result:
         print(f"Reorder Point:      {analysis_result['reorder_point']} units")
 
@@ -112,23 +146,27 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
 
     if "budget_escalation" in analysis_result:
-        escalation = "REQUIRED" if analysis_result["budget_escalation"] else "NOT REQUIRED"
+        escalation = "REQUIRED" if analysis_result.get('budget_escalation') else "NOT REQUIRED"
         print(f"Budget Escalation:  {escalation}")
+    
 
     print(config.BANNER_CHAR * config.LINE_WIDTH)
 
-def prompt_user_approval(): # prompts user to approve or reject the generated procurement decision
+def prompt_user_approval(): # prompts user to approve or reject the generated procurement decision or quit
     while True:
-        choice = input("\nDo you APPROVE this recommendation? (Y/N): ").strip().upper()
+        choice = input("\nDo you APPROVE this recommendation? (Y/N/Quit): ").strip().upper()
         if choice in ['Y', 'YES']:
-            print("\n[STATUS] Procurement recommendation APPROVED and queued for persistence.")
-            return "APPROVED"
+            print("\n[STATUS] Procurement recommendation APPROVED.")
+            return "APPROVED", ""
         elif choice in ['N', 'NO']:
             reason = input("Enter reason for rejection/overriding decision: ").strip()
             print(f"\n[STATUS] Procurement recommendation REJECTED. (Reason: {reason})")
-            return f"REJECTED: {reason}"
+            return "REJECTED", reason
+        elif choice in ['Q', 'QUIT']:
+            print("\n[STATUS] Decision deferred. Marked as PENDING.")
+            return "PENDING", ""
         else:
-            print("Invalid response. Please enter 'Y' for Yes or 'N' for No.")
+            print("Invalid response. Please enter 'Y' for Yes, 'N' for No, or 'Q' to Quit.")
 
 def display_previous_recommendations(history): # displays log of previous decisions  
     if not history:
