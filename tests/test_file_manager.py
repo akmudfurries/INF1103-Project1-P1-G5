@@ -18,7 +18,14 @@ def test_save_and_load_records_success():
         loaded = load_records(file_path)
         assert loaded == sample_records
 
+def test_load_missing_file():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        missing = Path(temp_dir) / "missing.json"
+        loaded = load_records(missing)
+        assert loaded == []
+
 
 if __name__ == "__main__":
     test_save_and_load_records_success()
+    test_load_missing_file()
     print("Test passed!")
