@@ -67,14 +67,16 @@ def build_procurement_record(
     recommended_quantity,
     priority,
     action,
-    approval_status
+    approval_status,
+    rejection_reason=""
 ):
     record = {
         "item_id": item_id,
         "recommended_quantity": recommended_quantity,
         "priority": priority,
         "action": action,
-        "approval_status": approval_status
+        "approval_status": approval_status,
+        "rejection_reason": rejection_reason
     }
 
     validate_procurement_record(record)
@@ -87,7 +89,8 @@ def validate_procurement_record(record):
         "recommended_quantity", 
         "priority", 
         "action", 
-        "approval_status"
+        "approval_status",
+        "rejection_reason"
     ]
 
     if not isinstance(record, dict):
@@ -118,6 +121,17 @@ def validate_procurement_record(record):
     if record["approval_status"] not in valid_statuses:
         raise ValueError(
             f"approval_status must be one of {sorted(valid_statuses)}."
+        )
+
+    if not isinstance(record["rejection_reason"], str):
+        raise ValueError("rejection_reason must be a string.")
+
+    if record["approval_status"] == "REJECTED":
+        if not record["rejection_reason"].strip():
+            raise ValueError("A rejection reason is required for rejected decisions.")
+    elif record["rejection_reason"]:
+        raise ValueError(
+            "rejection_reason must be empty unless approval_status is REJECTED."
         )
     
     return True
@@ -171,11 +185,12 @@ def get_records_for_item(records, item_id):
     
     return matching_records
 
-def create_procurement_from_business_rule(item_id, business_rule_output, approval_status):
+def create_procurement_from_business_rule(item_id, business_rule_output, approval_status, rejection_reason=""):
     return build_procurement_record(
-        item_id, 
+        item_id,
         business_rule_output["recommended_quantity"],
         business_rule_output["priority"],
         business_rule_output["action"],
-        approval_status
+        approval_status,
+        rejection_reason
     )
