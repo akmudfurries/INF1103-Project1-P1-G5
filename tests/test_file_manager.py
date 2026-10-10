@@ -29,9 +29,23 @@ def test_save_invalid():
         file_path = Path(temp_dir) / "test_data.json"
         assert save_records(file_path, "not a list") is False
 
+def test_corrupted_json():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        file_path = Path(temp_dir) / "test_data.json"
+        #simulage corrupted file
+        file_path.write_text("invalid json", encoding="utf-8")
+        
+        assert load_records(file_path) == []
+        #timestamped file generated
+        assert list(file_path.parent.glob("*_corrupted_*.json"))
+        
+        #check if new file is valid
+        assert load_records(file_path) == []
+
 
 if __name__ == "__main__":
     test_save_and_load_records_success()
     test_load_missing_file()
     test_save_invalid()
+    test_corrupted_json()
     print("Test passed!")
