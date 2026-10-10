@@ -20,7 +20,7 @@ def get_main_menu_choice(): # renders main CLI menu and captures user choice
     return input("\nSelect an option (1-5): ").strip()
 
 def prompt_inventory_record(): # collects raw inventory item input fields
-    print("\n" +config.DIVIDER_CHAR * config.LINE_WIDTH)
+    print("\n" + config.DIVIDER_CHAR * config.LINE_WIDTH)
     print(" CREATE NEW INVENTORY RECORD ")
     print(config.DIVIDER_CHAR * config.LINE_WIDTH)
 
@@ -35,7 +35,7 @@ def prompt_inventory_record(): # collects raw inventory item input fields
     budget_raw = input("Available Budget ($): ").strip()
     notes = input("Operational Notes: ").strip()
 
-# direct type conversion
+# direct type conversion, eg. convert raw string to int or default to 0 if not digit
     return { 
         "item_id": item_id if item_id else "ITEM_001",
         "item_name": item_name if item_name else "Unnamed Item",
@@ -43,9 +43,9 @@ def prompt_inventory_record(): # collects raw inventory item input fields
         "current_stock": int(stock_raw) if stock_raw.isdigit() else 0,
         "weekly_usage": float(usage_raw) if usage_raw.replace('.', '', 1).isdigit() else 0.0,
         "lead_time_weeks": int(lead_raw) if lead_raw.isdigit() else 0,
-        "minimum_order_quantity": int(moq_raw) if moq_raw.isdigit() else 0,
+        "moq": int(moq_raw) if moq_raw.isdigit() else 0,
         "unit_cost": float(cost_raw) if cost_raw.replace('.', '', 1).isdigit() else 0.0,
-        "available_budget": float(budget_raw) if budget_raw.replace('.', '', 1).isdigit() else 0.0,
+        "budget": float(budget_raw) if budget_raw.replace('.', '', 1).isdigit() else 0.0,
         "operational_notes": notes if notes else "N/A"
     }
 
@@ -73,20 +73,20 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     # quantitative inventory data
     print("\n[Inventory Data]")
     print(config.DIVIDER_CHAR * 30)
-    print(f"Current Stock:      {inventory['current_stock']} units")
-    print(f"Weekly Usage:       {inventory['avg_weekly_usage']} units")
-    print(f"Supplier Lead Time: {inventory['supplier_lead_time']} weeks")
+    print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
+    print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
+    print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
 
-    coverage = analysis_result.get('stock_coverage_weeks')
+    coverage = analysis_result.get('stock_coverage')
     coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
     print(f"Stock Coverage:     {coverage_str}")
 
-    # ai assessment (ref to ai_manager.py)
+    # ai assessment (ref to ai_manager.py  / business_rules.py)
     print("\n[AI Assessment]")
     print(config.DIVIDER_CHAR * 30)
     print(f"Demand Level:           {ai_assessment.get('demand_level', 'N/A').upper()}")
     print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
-    print(f"Supplier Issue:         {ai_assessment.get('supplier_issue', 'N/A').upper()}")
+    print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
     print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
     print(f"Reason:                 {ai_assessment.get('reason', 'N/A')}")
 
@@ -94,9 +94,9 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print("\n[Procurement Analysis]")
     print(config.DIVIDER_CHAR * 30)
     print(f"Reorder Point:      {analysis_result.get('reorder_point', 0)} units")
-    print(f"Recommended Order:  {analysis_result.get('recommended_order_quantity', 0)} units")
+    print(f"Recommended Order:  {analysis_result.get('recommended_quantity', 0)} units")
     print(f"Estimated Cost:     ${analysis_result.get('estimated_cost', 0.0):.2f}")
-    print(f"Available Budget:   ${analysis_result.get('available_budget', 0.0):.2f}")
+    print(f"Available Budget:   ${analysis_result.get('budget', 0.0):.2f}")
 
     # decision output and priority
     print("\n[Final Decision]")
@@ -104,7 +104,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Priority:           {analysis_result.get('priority', 'NORMAL')}")
     print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
 
-    escalation = "REQUIRED" if analysis_result.get('budget_escalation_required') else "NOT REQUIRED"
+    escalation = "REQUIRED" if analysis_result.get('budget_escalation') else "NOT REQUIRED"
     print(f"Budget Escalation:  {escalation}")
     print(config.BANNER_CHAR * config.LINE_WIDTH)
 
@@ -121,17 +121,14 @@ def prompt_user_approval(): # prompts user to approve or reject the generated pr
         else:
             print("Invalid response. Please enter 'Y' for Yes or 'N' for No.")
 
-def display_previous_recommendations(history): # displays log of previous decisions
-    print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
-    print(" PREVIOUS RECOMMENDATIONS & DECISIONS ")
-    print(config.DIVIDER_CHAR * config.LINE_WIDTH)
-    
+def display_previous_recommendations(history): # displays log of previous decisions  
     if not history:
-        print("No previous recommendations recorded.")
+        print("\nNo previous procurement recommendations found.")
         return
-
-    for idx, rec in enumerate(history, start=1):
-        item_id = rec.get('item_id', 'Unknown')
-        priority = rec.get('priority', 'N/A')
-        action = rec.get('action', 'N/A')
-        print(f"[{idx}] Item ID: {item_id} | Priority: {priority} | Action: {action}")
+    
+    print("\n--- PREVIOUS RECOMMENDATIONS & DECISIONS ---")
+    for idx, record in enumerate(history, start=1):
+        item_id = record.get('item_id', 'Unknown')
+        action = record.get('action', 'N/A')
+        status = record.get('approval_status', 'N/A')
+        print(f"[{idx}] Item ID: {item_id} | Action: {action} | Status: {status}")
