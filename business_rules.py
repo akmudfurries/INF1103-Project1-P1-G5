@@ -186,7 +186,7 @@ def analyse_inventory(inventory, assessment, safety_stock=None):
         action = "REORDER"
  
     result = {
-        "recommended_quantity": round(order_quantity, 2),
+        "recommended_quantity": int(order_quantity),
         "priority": priority,
         "action": action,
     }
