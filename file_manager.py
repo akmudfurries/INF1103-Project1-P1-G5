@@ -60,6 +60,11 @@ def load_json(file_path):
         except OSError as rename_error:
             print(f"Failed to backup corrupted file: {rename_error}")
 
+        #fresh file creation
+        save_json(path,DEFAULT_DATA)
+        print(f"Fresh file created at '{path}")
+        return DEFAULT_DATA
+
 
 
 def load_records(file_path):
