@@ -102,13 +102,14 @@ def run_inventory_analysis():
     ui_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
 
     # prompt user for approval decision (ui)
-    approval_status = ui_manager.prompt_user_approval()
+    approval_status, rejection_reason = ui_manager.prompt_user_approval()
 
     # save procurement decision record (ui)
     procurement_record = data_manager.create_procurement_from_business_rule(
         inventory["item_id"],
         analysis_result,
-        approval_status
+        approval_status,
+        rejection_reason
     )
 
     decisions = file_manager.load_records(DECISIONS_FILE)
