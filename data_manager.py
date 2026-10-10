@@ -170,6 +170,27 @@ def update_record(records, record_id, updates, id_field):
 
     return True, None
 
+def update_procurement_record(records, item_id, updates):
+    record = find_record_by_id(records, item_id, "item_id")
+
+    if record is None:
+        return False, f"Record not found: {item_id}"
+
+    if "item_id" in updates and updates["item_id"] != item_id:
+        return False, "Record ID cannot be changed."
+
+    updated_record = record.copy()
+    updated_record.update(updates)
+
+    try:
+        validate_procurement_record(updated_record)
+    except ValueError as error:
+        return False, str(error)
+
+    record.update(updates)
+
+    return True, None
+
 def link_procurement_to_item(procurement_record, inventory_records):
     item_id = procurement_record.get("item_id")
 
