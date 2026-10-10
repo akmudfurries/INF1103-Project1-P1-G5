@@ -1,30 +1,35 @@
+import business_rules
 import ui_manager
 import data_manager
 import file_manager
 import ai_manager
+import config
 
 INVENTORY_FILE = "data/inventory.json"
+DECISIONS_FILE = "data/procurement_decisions.json"
 
 def add_inventory_record():
     inventory_input = ui_manager.prompt_inventory_record()
+    if not inventory_input:
+        return
 
     try:
         inventory_record = data_manager.build_inventory_record(
-            # UI currently uses "item" as the item name.
-            # data_manager requires "item_id", so the item name is temporarily used as the ID.
-            # TODO: Replace with a dedicated item_id once the final data schema is agreed.
-            item_id=inventory_input["item"],
-
-            # Map UI field names to the field names expected by data_manager.
-            item_name=inventory_input["item"],
+            # ui_manager now returns exact keys required by data_manager.build_inventory_record, so no need for mapping.
+            item_id=inventory_input["item_id"],
+            item_name=inventory_input["item_name"],
             current_stock=inventory_input["current_stock"],
-            # data_manager requires "weekly_usage", so the following is temporarily used as the ID.
-            weekly_usage=inventory_input["avg_weekly_usage"],
-            # data_manager requires "lead_time_weeks", so the following is temporarily used as the ID.
-
-            lead_time_weeks=inventory_input["supplier_lead_time"],
+            weekly_usage=inventory_input["weekly_usage"],
+            lead_time_weeks=inventory_input["lead_time_weeks"],
             operational_notes=inventory_input["operational_notes"]
         )
+
+        # optional fields returned by ui
+        inventory_record["category"] = inventory_input["category"]
+        inventory_record["moq"] = inventory_input["moq"]
+        inventory_record["unit_cost"] = inventory_input["unit_cost"]
+        inventory_record["budget"] = inventory_input["budget"]
+
     except ValueError as error:
         print(f"\n[ERROR] {error}")
         return
@@ -47,38 +52,12 @@ def add_inventory_record():
         print("\n[ERROR] Failed to save inventory record.")
 
 
-
-# --- Temporary UI schema adapter --- Start
-def prepare_records_for_display(records):
-    display_records = []
-
-    for record in records:
-        # UI expects "item" and "category", while data_manager stores "item_name"
-        # and currently does not store "category".
-        # TODO: Remove once the final shared inventory schema is agreed.
-        display_record = {
-            "item": record["item_name"],
-            "category": record.get("category", "General"),
-            "current_stock": record["current_stock"]
-        }
-
-        display_records.append(display_record)
-
-    return display_records
-
-# --- Temporary UI schema adapter --- End
+# fixed ui schema mismatch n removed temporary adapter function
 
 def view_inventory_records():
     records = file_manager.load_records(INVENTORY_FILE)
-
-    if not records:
-        ui_manager.display_inventory_records(records)
-        return
-
-    display_records = prepare_records_for_display(records)
-
-    ui_manager.display_inventory_records(display_records)
-    #######        
+    ui_manager.display_inventory_records(records)
+      
 
 def run_inventory_analysis():
     records = file_manager.load_records(INVENTORY_FILE)
@@ -87,12 +66,13 @@ def run_inventory_analysis():
         print("\nNo inventory records found.")
         return
     
-    #  --- Temporary UI schema adapter ---
-    display_records = prepare_records_for_display(records)
-    # ---
-    ui_manager.display_inventory_records(display_records)
+# removed temporary ui schema adaptor function
 
-    choice = input("\nEnter the inventory record number to analyse: ").strip()
+    ui_manager.display_inventory_records(records)
+
+    choice = input("\nEnter the inventory record number to analyse (or 'q' to cancel): ").strip()
+    if choice.lower() in ['q', 'quit']:
+        return
 
     if not choice.isdigit():
         print("\n[ERROR] Please enter a valid record number.")
@@ -108,19 +88,46 @@ def run_inventory_analysis():
 
     # AI integration is implemented but requires GEMINI_API_KEY to run.
     # TODO: Test with a valid API key before final integration testing.
-    ai_assessment, error = ai_manager.get_ai_analysis(inventory)
+    ai_assessment, error = ai_manager.get_ai_analysis(inventory) # run ai analysis
 
     if error:
         print(f"\n[ERROR] {error}")
         return
 
-    print("\n[AI ANALYSIS]")
-    print(f"Demand Level: {ai_assessment['demand_level']}")
-    print(f"Demand Trend: {ai_assessment['demand_trend']}")
-    print(f"Supply Risk: {ai_assessment['supply_risk']}")
-    print(f"Operational Importance: {ai_assessment['operational_importance']}")
-    print(f"Reason: {ai_assessment['reason']}")
+    # run quantitative business rules analysis
+    try:
+        analysis_result = business_rules.analyse_inventory(inventory, ai_assessment)
+    except ValueError as err:
+        print(f"\n[ERROR] Business Rule Calculation Error: {err}")
+        return
 
+    # display full report to user (ui)
+    ui_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
+
+    # prompt user for approval decision n rejection reason (ui)
+    approval_status, rejection_reason = ui_manager.prompt_user_approval()
+
+    # save procurement decision record (ui)
+    procurement_record = data_manager.create_procurement_from_business_rule(
+        inventory["item_id"],
+        analysis_result,
+        approval_status,
+        rejection_reason
+    )
+
+    decisions = file_manager.load_records(DECISIONS_FILE)
+    # Procurement history can contain multiple decisions for one inventory item.
+    decisions.append(procurement_record)
+
+    if file_manager.save_records(DECISIONS_FILE, decisions):
+        print("\n[STATUS] Procurement decision saved successfully.")
+    else:
+        print("\n[ERROR] Failed to save procurement decision.")
+
+
+def view_previous_recommendations():
+    decisions = file_manager.load_records(DECISIONS_FILE)
+    ui_manager.display_previous_recommendations(decisions)
 
 
 def main():
@@ -139,14 +146,14 @@ def main():
             run_inventory_analysis()
 
         elif choice == "4":
-            print("View previous procurement recommendations.")
+            view_previous_recommendations()
 
-        elif choice == "5":
+        elif choice in ["5", "q", "quit"]:
             print("Exiting application.")
             break
 
         else:
-            print("Please enter 1, 2, 3, 4 or 5.")
+            print("Please enter 1, 2, 3, 4 or 5, or 'q' to quit.")
 
 if __name__ == "__main__":
     main()

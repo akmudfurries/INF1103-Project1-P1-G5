@@ -3,6 +3,7 @@
 #   setx GEMINI_API_KEY "your-key"   (free key from aistudio.google.com)
 
 import json
+import time
 from config import ALLOWED_ANSWERS, MAX_RETRIES
 
 def ai_error(error): # Turns Gemini error into text
@@ -43,14 +44,19 @@ def ask_gemini(prompt: str): #Send the prompt to GEMINI.
     client = genai.Client(
         http_options=types.HttpOptions(
             timeout=30000, # 30 sec time limit
-            retry_options=types.HttpRetryOptions(attempts=1) # Dont Retry, Push to Ai Analaysis 
+            retry_options=types.HttpRetryOptions(attempts=2) # Dont Retry, Push to Ai Analaysis 
             ),
         )   # Reads API key, 
     response = client.models.generate_content(
-        model="gemini-3.8-flash",
+        # model="gemini-3.8-flash",
+        model="gemini-3.1-flash-lite",
         contents=prompt,
-        config={"response_mime_type": "application/json"},
-    )
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                disable=True
+            )
+        )    )
     return response.text
 
 def extract_ai_response(ai_reply: str): # Turns Answer into a Dict
@@ -92,8 +98,13 @@ def get_ai_analysis(item: dict, ask_function=ask_gemini): # Runs every step
         try:
             ai_reply = ask_function(prompt)
         except Exception as error:
-            issue = ai_error(error) # Make the Error readable
-            continue 
+            issue = ai_error(error)
+
+            if "503" in str(error) or "unavailable" in str(error).lower():
+                if cycle < MAX_RETRIES:
+                    time.sleep(2 * (cycle + 1))
+
+            continue
         answer = extract_ai_response(ai_reply)
         if answer is None:
             issue = "AI reply was not valid JSON"

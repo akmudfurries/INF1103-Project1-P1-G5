@@ -1,5 +1,6 @@
 #reads and writes JSON FIlES
 #tested against mockup json file
+from datetime import datetime
 import json
 import os
 from pathlib import Path
@@ -43,9 +44,28 @@ def load_json(file_path):
                 save_json(path, DEFAULT_DATA)
                 return DEFAULT_DATA
             return json.loads(content)
-    except (json.JSONDecodeError, OSError) as error:
-        print(f"[Error] Failed reading '{path}': {error}")
-        return None
+    except json.JSONDecodeError as error:
+        
+        print(f"[Error] Corrupted JSON detected in '{path}': {error}")
+
+        #timestamped backup name
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_name = f"{path.stem}_corrupted_{timestamp}{path.suffix}"
+        backup_path = path.with_name(backup_name)
+
+        #backup logic
+        try:
+            path.rename(backup_path)
+            print(f"Corrupted file backed up to: '{backup_path}")
+        except OSError as rename_error:
+            print(f"Failed to backup corrupted file: {rename_error}")
+
+        #fresh file creation
+        save_json(path,DEFAULT_DATA)
+        print(f"Fresh file created at '{path}")
+        return DEFAULT_DATA
+
+
 
 def load_records(file_path):
     #extract list of records from json file
