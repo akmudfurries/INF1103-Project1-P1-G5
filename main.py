@@ -54,10 +54,8 @@ def add_inventory_record():
 
 def view_inventory_records():
     records = file_manager.load_records(INVENTORY_FILE)
-
-    if not records:
-        ui_manager.display_inventory_records(records)
-        return
+    ui_manager.display_inventory_records(records)
+    return
       
 
 def run_inventory_analysis():
@@ -114,13 +112,18 @@ def run_inventory_analysis():
     )
 
     decisions = file_manager.load_records(DECISIONS_FILE)
-    data_manager.add_record(decisions, procurement_record, "item_id")
-    file_manager.save_records(DECISIONS_FILE, decisions)
+    # Procurement history can contain multiple decisions for one inventory item.
+    decisions.append(procurement_record)
+
+    if file_manager.save_records(DECISIONS_FILE, decisions):
+        print("\n[STATUS] Procurement decision saved successfully.")
+    else:
+        print("\n[ERROR] Failed to save procurement decision.")
 
 
 def view_previous_recommendations():
     decisions = file_manager.load_records(DECISIONS_FILE)
-    ui_manager.display_procurement_decisions(decisions)
+    ui_manager.display_previous_recommendations(decisions)
 
 
 def main():
