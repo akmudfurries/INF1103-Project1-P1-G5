@@ -44,9 +44,9 @@ def load_json(file_path):
                 save_json(path, DEFAULT_DATA)
                 return DEFAULT_DATA
             return json.loads(content)
-    except (json.JSONDecodeError, OSError) as error:
+    except json.JSONDecodeError as error:
         
-        print(f"[Error] Corrupted JSON detcedted in '{path}': {error}")
+        print(f"[Error] Corrupted JSON detected in '{path}': {error}")
 
         #timestamped backup name
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
