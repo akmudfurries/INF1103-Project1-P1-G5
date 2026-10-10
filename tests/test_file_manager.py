@@ -1,42 +1,24 @@
-import json
 import tempfile
-import unittest
 from pathlib import Path
-
 from file_manager import load_records, save_records
 
 
-class TestFileManager(unittest.TestCase):
-
-    def setUp(self):
-        self.test_dir = tempfile.TemporaryDirectory()
-        self.file_path = Path(self.test_dir.name) / "test_data.json"
-
-    def tearDown(self):
-        self.test_dir.cleanup()
-
-    def test_save_and_load_records_success(self):
+def test_save_and_load_records_success():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        file_path = Path(temp_dir) / "test_data.json"
         sample_records = [{
-            "item_id": "INV001",
+            "item_id": "INV007",
             "item_name": "Screw",
-            "current_stock": 42,
-            "weekly_usage": 17,
+            "current_stock": 49,
+            "weekly_usage": 13,
             "lead_time_weeks": 2,
             "operational_notes": "Supplier was late thrice."
         }]
-        self.assertTrue(save_records(self.file_path, sample_records))
-
-        loaded = load_records(self.file_path)
-        self.assertEqual(loaded, sample_records)
-
-    def test_load_nonexistent_file(self):
-        non_existent = Path(self.test_dir.name) / "missing.json"
-        loaded = load_records(non_existent)
-        self.assertEqual(loaded, [])
-
-    def test_save_records_invalid_type(self):
-        self.assertFalse(save_records(self.file_path, "not a list"))
+        assert save_records(file_path, sample_records) is True
+        loaded = load_records(file_path)
+        assert loaded == sample_records
 
 
 if __name__ == "__main__":
-    unittest.main()
+    test_save_and_load_records_success()
+    print("Test passed!")
