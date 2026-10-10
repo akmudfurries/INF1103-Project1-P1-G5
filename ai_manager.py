@@ -44,11 +44,12 @@ def ask_gemini(prompt: str): #Send the prompt to GEMINI.
     client = genai.Client(
         http_options=types.HttpOptions(
             timeout=30000, # 30 sec time limit
-            retry_options=types.HttpRetryOptions(attempts=1) # Dont Retry, Push to Ai Analaysis 
+            retry_options=types.HttpRetryOptions(attempts=2) # Dont Retry, Push to Ai Analaysis 
             ),
         )   # Reads API key, 
     response = client.models.generate_content(
-        model="gemini-3.8-flash",
+        # model="gemini-3.8-flash",
+        model="gemini-3.1-flash-lite",
         contents=prompt,
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
