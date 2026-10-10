@@ -507,3 +507,38 @@ def test_manage_extended_inventory_data():
     assert record["unit_cost"] == 12.00
     assert record["stock_coverage"] == 2.8
     assert record["reorder_point"] == 45
+
+def test_manage_extended_procurement_data():
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    extended_updates = {
+        "estimated_cost": 600.00,
+        "budget_escalation": True
+    }
+
+    success, error= update_record(
+        records,
+        "INV001",
+        extended_updates,
+        "item_id"
+    )
+
+    assert success is True
+    assert error is None
+
+    record = find_record_by_id(
+        records,
+        "INV001",
+        "item_id"
+    )
+
+    assert record["estimated_cost"] == 600.00
+    assert record["budget_escalation"] is True
