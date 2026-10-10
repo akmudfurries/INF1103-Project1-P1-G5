@@ -68,7 +68,7 @@ def build_procurement_record(
     priority,
     action,
     approval_status,
-    rejection_reason=""
+    rejection_reason=None
 ):
     record = {
         "item_id": item_id,
@@ -90,7 +90,6 @@ def validate_procurement_record(record):
         "priority", 
         "action", 
         "approval_status",
-        "rejection_reason"
     ]
 
     if not isinstance(record, dict):
@@ -123,15 +122,18 @@ def validate_procurement_record(record):
             f"approval_status must be one of {sorted(valid_statuses)}."
         )
 
-    if not isinstance(record["rejection_reason"], str):
-        raise ValueError("rejection_reason must be a string.")
+    rejection_reason = record.get("rejection_reason")
+
+    if rejection_reason is not None and not isinstance(rejection_reason, str):
+        raise ValueError("rejection_reason must be a string or None.")
 
     if record["approval_status"] == "REJECTED":
-        if not record["rejection_reason"].strip():
-            raise ValueError("A rejection reason is required for rejected decisions.")
-    elif record["rejection_reason"]:
+        if not rejection_reason or not rejection_reason.strip():
+            raise ValueError("A rejection reason is required when status is REJECTED.")
+
+    elif rejection_reason is not None:
         raise ValueError(
-            "rejection_reason must be empty unless approval_status is REJECTED."
+            "rejection_reason must be None unless status is REJECTED."
         )
     
     return True
@@ -185,7 +187,7 @@ def get_records_for_item(records, item_id):
     
     return matching_records
 
-def create_procurement_from_business_rule(item_id, business_rule_output, approval_status, rejection_reason=""):
+def create_procurement_from_business_rule(item_id, business_rule_output, approval_status, rejection_reason=none):
     return build_procurement_record(
         item_id,
         business_rule_output["recommended_quantity"],
