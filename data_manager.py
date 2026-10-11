@@ -1,5 +1,5 @@
 
-
+from datetime import datetime
 
 def build_inventory_record(
     item_id,
@@ -68,15 +68,20 @@ def build_procurement_record(
     priority,
     action,
     approval_status,
-    rejection_reason=None
+    rejection_reason=None,
+    timestamp = None
 ):
+    if timestamp is None:
+        timestamp = datetime.now().isoformat(timespec="seconds")
+
     record = {
         "item_id": item_id,
         "recommended_quantity": recommended_quantity,
         "priority": priority,
         "action": action,
         "approval_status": approval_status,
-        "rejection_reason": rejection_reason
+        "rejection_reason": rejection_reason,
+        "timestamp": timestamp
     }
 
     validate_procurement_record(record)
@@ -90,6 +95,7 @@ def validate_procurement_record(record):
         "priority", 
         "action", 
         "approval_status",
+        "timestamp"
     ]
 
     if not isinstance(record, dict):
@@ -135,7 +141,8 @@ def validate_procurement_record(record):
         raise ValueError(
             "rejection_reason must be None unless status is REJECTED."
         )
-    
+    if not isinstance(record["timestamp"], str) or not record["timestamp"].strip():
+        raise ValueError("timestamp must be a non-empty string.")
     return True
 
 def find_record_by_id(records, record_id, id_field):

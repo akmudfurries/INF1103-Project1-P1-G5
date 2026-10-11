@@ -541,7 +541,7 @@ def test_manage_extended_inventory_data():
         "item_id": "INV001",
         "item_name": "Industrial Printer Ribbon",
         "current_stock": 42,
-        "weekly usage": 15,
+        "weekly_usage": 15,
         "lead_time_weeks": 2,
         "operational_notes": "Demand increased recently",
         "safety_stock": 15,
@@ -624,3 +624,16 @@ def test_manage_extended_procurement_data():
 
     assert record["estimated_cost"] == 600.00
     assert record["budget_escalation"] is True
+
+def test_procurement_timestamp_created():
+    record = build_procurement_record(
+        "INV001",
+        50,
+        "HIGH",
+        "REORDER",
+        "PENDING"
+    )
+
+    assert "timestamp" in record
+    assert isinstance(record["timestamp"], str)
+    assert record["timestamp"] != ""
