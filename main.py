@@ -104,16 +104,20 @@ def run_inventory_analysis():
     # display full report to user (ui)
     ui_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
 
-    # prompt user for approval decision n rejection reason (ui)
+    # Prompt user for approval decision and rejection reason
     approval_status, rejection_reason = ui_manager.prompt_user_approval()
 
-    # save procurement decision record (ui)
-    procurement_record = data_manager.create_procurement_from_business_rule(
-        inventory["item_id"],
-        analysis_result,
-        approval_status,
-        rejection_reason
-    )
+    # Create procurement decision record
+    try:
+        procurement_record = data_manager.create_procurement_from_business_rule(
+            inventory["item_id"],
+            analysis_result,
+            approval_status,
+            rejection_reason if approval_status == "REJECTED" else None
+        )
+    except (ValueError, KeyError) as error:
+        print(f"\n[ERROR] Failed to create procurement record: {error}")
+        return
 
     decisions = file_manager.load_records(DECISIONS_FILE)
     # Procurement history can contain multiple decisions for one inventory item.

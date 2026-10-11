@@ -35,14 +35,14 @@ def load_json(file_path):
     path = Path(file_path)
     if not path.exists():
         ensure_json_file(path)
-        return DEFAULT_DATA
+        return {"schema_version": 1, "records": []}
 
     try:
         with path.open("r", encoding="utf-8") as file:
             content = file.read().strip()
             if not content:
                 save_json(path, DEFAULT_DATA)
-                return DEFAULT_DATA
+                return {"schema_version": 1, "records": []}
             return json.loads(content)
     except json.JSONDecodeError as error:
         
@@ -56,14 +56,14 @@ def load_json(file_path):
         #backup logic
         try:
             path.rename(backup_path)
-            print(f"Corrupted file backed up to: '{backup_path}")
+            print(f"Corrupted file backed up to: '{backup_path}'")
         except OSError as rename_error:
             print(f"Failed to backup corrupted file: {rename_error}")
 
         #fresh file creation
         save_json(path,DEFAULT_DATA)
-        print(f"Fresh file created at '{path}")
-        return DEFAULT_DATA
+        print(f"Fresh file created at '{path}'")
+        return {"schema_version": 1, "records": []}
 
 
 

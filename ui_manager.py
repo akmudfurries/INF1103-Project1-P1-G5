@@ -1,5 +1,6 @@
 import config
 import validation
+import textwrap
 
 
 def print_header(): # display top app title banner
@@ -15,7 +16,7 @@ def get_main_menu_choice(): # renders main CLI menu with quit and captures user 
     print("3. Run inventory analysis")
     print("4. View previous procurement recommendations")
     print("5. Exit")
-    return input("\nSelect an option (1-5), or 'q' to quit: ").strip().lower()
+    return input("\nSelect an option (1-5): ").strip().lower()
 
 def _get_input_or_cancel(prompt_text):
     # helper to catch 'q' or 'quit' at any prompt.
@@ -30,57 +31,49 @@ def prompt_inventory_record(): # collects raw inventory item input fields
     print(" CREATE NEW INVENTORY RECORD (Type 'q' to cancel) ")
     print(config.DIVIDER_CHAR * config.LINE_WIDTH)
 
-    item = _get_input_or_cancel("Item Name / ID: ")
-    if item is None: return None
+    fields_to_prompt = [
+        ("item_id", "Item Name / ID: "),
+        ("category", "Category: "),
+        ("Current Stock", "Current Stock (units): "),
+        ("Average Weekly Usage", "Average Weekly Usage (units): "),
+        ("Supplier Lead Time", "Supplier Lead Time (weeks): "),
+        ("Minimum Order Quantity", "Minimum Order Quantity (units): "),
+        ("Unit Cost", "Unit Cost ($): "),
+        ("Available Budget", "Available Budget ($): "),
+        ("operational_notes", "Operational Notes: ")
+    ]
 
-    category = _get_input_or_cancel("Category: ")
-    if category is None: return None
-
-    stock_raw = _get_input_or_cancel("Current Stock (units): ")
-    if stock_raw is None: return None
-
-    usage_raw = _get_input_or_cancel("Average Weekly Usage (units): ")
-    if usage_raw is None: return None
-
-    lead_raw = _get_input_or_cancel("Supplier Lead Time (weeks): ")
-    if lead_raw is None: return None
-
-    moq_raw = _get_input_or_cancel("Minimum Order Quantity (units): ")
-    if moq_raw is None: return None
-
-    cost_raw = _get_input_or_cancel("Unit Cost ($): ")
-    if cost_raw is None: return None
-
-    budget_raw = _get_input_or_cancel("Available Budget ($): ")
-    if budget_raw is None: return None
-
-    notes = _get_input_or_cancel("Operational Notes: ")
-    if notes is None: return None
-
-    # validate inputs using validation.py
-    is_valid, errors, parsed = validation.validate_inventory_fields(
-        item, category, stock_raw, usage_raw, lead_raw, moq_raw, cost_raw, budget_raw, notes
-    )
-
-    if not is_valid:
-        print("\n[!] Input Validation Failed:")
-        for err in errors:
-            print(f"  - {err}")
-        print("[!] Record creation aborted. Please try again.")
-        return None
+    collected = {}
+    for key, prompt_text in fields_to_prompt:
+        while True:
+            val = _get_input_or_cancel(prompt_text)
+            if val is None:
+                return None
+            
+            is_valid, err_msg = validation.validate_single_field(key, val)
+            if is_valid:
+                if key in ["Current Stock", "Supplier Lead Time", "Minimum Order Quantity"]:
+                    collected[key] = int(val)
+                elif key in ["Average Weekly Usage", "Unit Cost", "Available Budget"]:
+                    collected[key] = float(val)
+                else:
+                    collected[key] = val
+                break
+            else:
+                print(f"  [!] Validation Error: {err_msg} Please try again.")
 
 # mapped keys matching team schema
-    return { 
-        "item_id": item,
-        "item_name": item,
-        "category": category,
-        "current_stock": parsed["Current Stock"],
-        "weekly_usage": parsed["Average Weekly Usage"],
-        "lead_time_weeks": parsed["Supplier Lead Time"],
-        "moq": parsed["Minimum Order Quantity"],
-        "unit_cost": parsed["Unit Cost"],
-        "budget": parsed["Available Budget"],
-        "operational_notes": notes
+    return {
+        "item_id": collected["item_id"],
+        "item_name": collected["item_id"],
+        "category": collected["category"],
+        "current_stock": collected["Current Stock"],
+        "weekly_usage": collected["Average Weekly Usage"],
+        "lead_time_weeks": collected["Supplier Lead Time"],
+        "moq": collected["Minimum Order Quantity"],
+        "unit_cost": collected["Unit Cost"],
+        "budget": collected["Available Budget"],
+        "operational_notes": collected["operational_notes"]
     }
 
 def display_inventory_records(records): # displays saved inventory records
@@ -93,7 +86,17 @@ def display_inventory_records(records): # displays saved inventory records
         name = item.get("item_name") or item.get("item", "Unknown Item")
         cat = item.get("category", "General")
         stock = item.get("current_stock", 0)
-        print(f"[{idx}] {name} | Category: {cat} | Stock: {stock} units")
+        notes = item.get("operational_notes") or "None provided"
+
+        print(f"\n[{idx}] {name} | Category: {cat} | Stock: {stock} units")
+        print("    Operational Notes:")
+        wrapped_notes = textwrap.fill(
+            notes,
+            width=75,
+            initial_indent="    ",
+            subsequent_indent="    "
+        )
+        print(wrapped_notes)
 
 def display_full_procurement_report(inventory, ai_assessment, analysis_result): # renders complete analysis output and metrics
     print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
@@ -110,6 +113,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
     print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
     print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
+    print(f"Operational Notes: {inventory.get('operational_notes', 'None provided')}")
 
     coverage = analysis_result.get('stock_coverage')
     coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
@@ -159,7 +163,11 @@ def prompt_user_approval(): # prompts user to approve or reject the generated pr
             print("\n[STATUS] Procurement recommendation APPROVED.")
             return "APPROVED", ""
         elif choice in ['N', 'NO']:
-            reason = input("Enter reason for rejection/overriding decision: ").strip()
+            while True:
+                reason = input("Enter reason for rejection/overriding decision: ").strip()
+                if reason:
+                    break
+                print("Reason cannot be empty. Please type a reason.")
             print(f"\n[STATUS] Procurement recommendation REJECTED. (Reason: {reason})")
             return "REJECTED", reason
         elif choice in ['Q', 'QUIT']:
@@ -179,3 +187,26 @@ def display_previous_recommendations(history): # displays log of previous decisi
         action = record.get('action', 'N/A')
         status = record.get('approval_status', 'N/A')
         print(f"[{idx}] Item ID: {item_id} | Action: {action} | Status: {status}")
+
+    print("-" * config.LINE_WIDTH)
+    choice = input("\nEnter record number to view full details (or 'q' to return):").strip()
+
+    if choice.lower() in ['q', 'quit']:
+        return
+
+    if choice.isdigit():
+        idx = int(choice) - 1
+        if 0 <= idx < len(history):
+            selected = history[idx]
+            print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
+            print(f" FULL DETAILS FOR RECORD #{idx + 1}".center(config.LINE_WIDTH))
+            print(config.BANNER_CHAR * config.LINE_WIDTH)
+            
+            for key, value in selected.items():
+                print(f"  {key.replace('_', ' ').title():<24}: {value}")
+                
+            print(config.BANNER_CHAR * config.LINE_WIDTH)
+        else:
+            print("\n[ERROR] Invalid record number.")
+    else:
+        print("\n[ERROR] Please enter a valid number.")
