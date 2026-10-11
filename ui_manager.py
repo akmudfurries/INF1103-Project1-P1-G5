@@ -1,5 +1,6 @@
 import config
 import validation
+import textwrap
 
 
 def print_header(): # display top app title banner
@@ -93,7 +94,17 @@ def display_inventory_records(records): # displays saved inventory records
         name = item.get("item_name") or item.get("item", "Unknown Item")
         cat = item.get("category", "General")
         stock = item.get("current_stock", 0)
-        print(f"[{idx}] {name} | Category: {cat} | Stock: {stock} units")
+        notes = item.get("operational_notes") or "None provided"
+
+        print(f"\n[{idx}] {name} | Category: {cat} | Stock: {stock} units")
+        print("    Operational Notes:")
+        wrapped_notes = textwrap.fill(
+            notes,
+            width=75,
+            initial_indent="    ",
+            subsequent_indent="    "
+        )
+        print(wrapped_notes)
 
 def display_full_procurement_report(inventory, ai_assessment, analysis_result): # renders complete analysis output and metrics
     print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
@@ -110,6 +121,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
     print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
     print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
+    print(f"Operational Notes: {inventory.get('operational_notes', 'None provided')}")
 
     coverage = analysis_result.get('stock_coverage')
     coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
