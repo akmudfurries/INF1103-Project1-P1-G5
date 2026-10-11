@@ -63,17 +63,17 @@ def prompt_inventory_record(): # collects raw inventory item input fields
                 print(f"  [!] Validation Error: {err_msg} Please try again.")
 
 # mapped keys matching team schema
-    return { 
-        "item_id": item,
-        "item_name": item,
-        "category": category,
-        "current_stock": parsed["Current Stock"],
-        "weekly_usage": parsed["Average Weekly Usage"],
-        "lead_time_weeks": parsed["Supplier Lead Time"],
-        "moq": parsed["Minimum Order Quantity"],
-        "unit_cost": parsed["Unit Cost"],
-        "budget": parsed["Available Budget"],
-        "operational_notes": notes
+    return {
+        "item_id": collected["item_id"],
+        "item_name": collected["item_id"],
+        "category": collected["category"],
+        "current_stock": collected["Current Stock"],
+        "weekly_usage": collected["Average Weekly Usage"],
+        "lead_time_weeks": collected["Supplier Lead Time"],
+        "moq": collected["Minimum Order Quantity"],
+        "unit_cost": collected["Unit Cost"],
+        "budget": collected["Available Budget"],
+        "operational_notes": collected["operational_notes"]
     }
 
 def display_inventory_records(records): # displays saved inventory records
@@ -183,3 +183,26 @@ def display_previous_recommendations(history): # displays log of previous decisi
         action = record.get('action', 'N/A')
         status = record.get('approval_status', 'N/A')
         print(f"[{idx}] Item ID: {item_id} | Action: {action} | Status: {status}")
+
+    print("-" * config.LINE_WIDTH)
+    choice = input("\nEnter record number to view full details (or 'q' to return):").strip()
+
+    if choice.lower() in ['q', 'quit']:
+        return
+
+    if choice.isdigit():
+        idx = int(choice) - 1
+        if 0 <= idx < len(history):
+            selected = history[idx]
+            print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
+            print(f" FULL DETAILS FOR RECORD #{idx + 1}".center(config.LINE_WIDTH))
+            print(config.BANNER_CHAR * config.LINE_WIDTH)
+            
+            for key, value in selected.items():
+                print(f"  {key.replace('_', ' ').title():<24}: {value}")
+                
+            print(config.BANNER_CHAR * config.LINE_WIDTH)
+        else:
+            print("\n[ERROR] Invalid record number.")
+    else:
+        print("\n[ERROR] Please enter a valid number.")
