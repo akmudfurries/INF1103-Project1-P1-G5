@@ -31,44 +31,36 @@ def prompt_inventory_record(): # collects raw inventory item input fields
     print(" CREATE NEW INVENTORY RECORD (Type 'q' to cancel) ")
     print(config.DIVIDER_CHAR * config.LINE_WIDTH)
 
-    item = _get_input_or_cancel("Item Name / ID: ")
-    if item is None: return None
+    fields_to_prompt = [
+        ("item_id", "Item Name / ID: "),
+        ("category", "Category: "),
+        ("Current Stock", "Current Stock (units): "),
+        ("Average Weekly Usage", "Average Weekly Usage (units): "),
+        ("Supplier Lead Time", "Supplier Lead Time (weeks): "),
+        ("Minimum Order Quantity", "Minimum Order Quantity (units): "),
+        ("Unit Cost", "Unit Cost ($): "),
+        ("Available Budget", "Available Budget ($): "),
+        ("operational_notes", "Operational Notes: ")
+    ]
 
-    category = _get_input_or_cancel("Category: ")
-    if category is None: return None
-
-    stock_raw = _get_input_or_cancel("Current Stock (units): ")
-    if stock_raw is None: return None
-
-    usage_raw = _get_input_or_cancel("Average Weekly Usage (units): ")
-    if usage_raw is None: return None
-
-    lead_raw = _get_input_or_cancel("Supplier Lead Time (weeks): ")
-    if lead_raw is None: return None
-
-    moq_raw = _get_input_or_cancel("Minimum Order Quantity (units): ")
-    if moq_raw is None: return None
-
-    cost_raw = _get_input_or_cancel("Unit Cost ($): ")
-    if cost_raw is None: return None
-
-    budget_raw = _get_input_or_cancel("Available Budget ($): ")
-    if budget_raw is None: return None
-
-    notes = _get_input_or_cancel("Operational Notes: ")
-    if notes is None: return None
-
-    # validate inputs using validation.py
-    is_valid, errors, parsed = validation.validate_inventory_fields(
-        item, category, stock_raw, usage_raw, lead_raw, moq_raw, cost_raw, budget_raw, notes
-    )
-
-    if not is_valid:
-        print("\n[!] Input Validation Failed:")
-        for err in errors:
-            print(f"  - {err}")
-        print("[!] Record creation aborted. Please try again.")
-        return None
+    collected = {}
+    for key, prompt_text in fields_to_prompt:
+        while True:
+            val = _get_input_or_cancel(prompt_text)
+            if val is None:
+                return None
+            
+            is_valid, err_msg = validation.validate_single_field(key, val)
+            if is_valid:
+                if key in ["Current Stock", "Supplier Lead Time", "Minimum Order Quantity"]:
+                    collected[key] = int(val)
+                elif key in ["Average Weekly Usage", "Unit Cost", "Available Budget"]:
+                    collected[key] = float(val)
+                else:
+                    collected[key] = val
+                break
+            else:
+                print(f"  [!] Validation Error: {err_msg} Please try again.")
 
 # mapped keys matching team schema
     return { 
