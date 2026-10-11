@@ -15,7 +15,7 @@ def get_main_menu_choice(): # renders main CLI menu with quit and captures user 
     print("3. Run inventory analysis")
     print("4. View previous procurement recommendations")
     print("5. Exit")
-    return input("\nSelect an option (1-5), or 'q' to quit: ").strip().lower()
+    return input("\nSelect an option (1-5): ").strip().lower()
 
 def _get_input_or_cancel(prompt_text):
     # helper to catch 'q' or 'quit' at any prompt.
