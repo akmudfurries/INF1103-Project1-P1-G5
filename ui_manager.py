@@ -163,7 +163,11 @@ def prompt_user_approval(): # prompts user to approve or reject the generated pr
             print("\n[STATUS] Procurement recommendation APPROVED.")
             return "APPROVED", ""
         elif choice in ['N', 'NO']:
-            reason = input("Enter reason for rejection/overriding decision: ").strip()
+            while True:
+                reason = input("Enter reason for rejection/overriding decision: ").strip()
+                if reason:
+                    break
+                print("Reason cannot be empty. Please type a reason.")
             print(f"\n[STATUS] Procurement recommendation REJECTED. (Reason: {reason})")
             return "REJECTED", reason
         elif choice in ['Q', 'QUIT']:
