@@ -143,6 +143,9 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     if "reorder_point" in analysis_result:
         print(f"Reorder Point:      {analysis_result['reorder_point']} units")
 
+    if "safety_stock" in analysis_result:
+        print(f"Safety Stock:       {analysis_result['safety_stock']} units")
+
     if "estimated_cost" in analysis_result:
         print(f"Estimated Cost:     ${analysis_result['estimated_cost']:.2f}")
 
