@@ -16,6 +16,7 @@ from data_manager import link_procurement_to_item
 from data_manager import get_records_for_item
 from data_manager import create_procurement_from_business_rule
 from data_manager import update_procurement_record
+from data_manager import get_procurement_record_by_number
 
 from file_manager import save_records, load_records
 
@@ -261,6 +262,44 @@ def test_approval_status_values():
 
     assert record["approval_status"] == "REJECTED"
     assert record["rejection_reason"] == "Budget exceeded"
+
+def test_extended_procurement_persistance(tmp_path):
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    extended_updates = {
+        "estimated_cost": 600.00,
+        "budget_escalation": True
+    }
+
+    success, error = update_procurement_record(
+        records,
+        "INV001",
+        extended_updates
+    )
+
+    assert success is True
+    assert error is None
+
+    file_path =  str(tmp_path / "extended_procurement.json")
+
+    save_records(file_path, records)
+
+    loaded_records = load_records(file_path)
+
+    assert len(loaded_records) == 1
+    assert loaded_records[0]["item_id"] == "INV001"
+    assert loaded_records[0]["estimated_cost"] == 600.00
+    assert loaded_records[0]["budget_escalation"] is True
+    assert "timestamp" in loaded_records[0]
+    assert loaded_records[0]["timestamp"] != ""
 
 # =====================================================================
 # Record Management Tests
@@ -636,3 +675,24 @@ def test_procurement_timestamp_created():
     assert "timestamp" in record
     assert isinstance(record["timestamp"], str)
     assert record["timestamp"] != ""
+
+def test_get_procurement_record_by_number():
+    records = [
+        {"item_id": "INV001"},
+        {"item_id": "INV002"},
+        {"item_id": "INV003"}
+    ]
+
+    result = get_procurement_record_by_number(records, 2)
+
+    assert result["item_id"] == "INV002"
+
+def test_get_procurement_record_by_invalid_number():
+    records = [
+        {"item_id": "INV001"}
+    ]
+
+    result = get_procurement_record_by_number(records, 5)
+
+    assert result is None
+

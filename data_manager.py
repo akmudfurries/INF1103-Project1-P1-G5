@@ -224,3 +224,9 @@ def create_procurement_from_business_rule(item_id, business_rule_output, approva
         approval_status,
         rejection_reason
     )
+
+def get_procurement_record_by_number(records, record_number):
+    if record_number < 1 or record_number > len(records):
+        return None
+
+    return records[record_number - 1]
