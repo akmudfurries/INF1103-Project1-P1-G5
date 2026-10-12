@@ -124,9 +124,9 @@ def run_inventory_analysis():
     decisions.append(procurement_record)
 
     if file_manager.save_records(DECISIONS_FILE, decisions):
-        print("\n[STATUS] Procurement decision saved successfully.")
+        print("[STATUS] Procurement decision saved successfully.")
     else:
-        print("\n[ERROR] Failed to save procurement decision.")
+        print("[ERROR] Failed to save procurement decision.")
 
 
 def view_previous_recommendations():
@@ -157,7 +157,7 @@ def main():
             break
 
         else:
-            print("Please enter 1, 2, 3, 4 or 5, or 'q' to quit.")
+            print("Please enter 1, 2, 3, 4 or '5' to exit application.")
 
 if __name__ == "__main__":
     main()
