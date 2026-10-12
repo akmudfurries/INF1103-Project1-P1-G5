@@ -606,11 +606,10 @@ def test_manage_extended_procurement_data():
         "budget_escalation": True
     }
 
-    success, error= update_record(
+    success, error= update_procurement_record(
         records,
         "INV001",
-        extended_updates,
-        "item_id"
+        extended_updates
     )
 
     assert success is True
