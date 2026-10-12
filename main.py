@@ -157,7 +157,7 @@ def main():
             break
 
         else:
-            print("Please enter 1, 2, 3, 4 or 5, or 'q' to quit.")
+            print("Please enter 1, 2, 3, 4 or '5' to exit application.")
 
 if __name__ == "__main__":
     main()
