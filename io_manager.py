@@ -2,6 +2,10 @@ import config
 import validation
 import textwrap
 
+def print_section_heading(title, width=50):
+    print("\n" + "=" * width)
+    print(title.center(width))
+    print("=" * width)
 
 def print_header(): # display top app title banner
     print(config.BANNER_CHAR * config.LINE_WIDTH)
@@ -81,7 +85,7 @@ def display_inventory_records(records): # displays saved inventory records
         print("\nNo inventory records found.")
         return
 
-    print("\n--- STORED INVENTORY RECORDS ---")
+    print_section_heading("STORED INVENTORY RECORDS")
     for idx, item in enumerate(records, start=1):
         name = item.get("item_name") or item.get("item", "Unknown Item")
         cat = item.get("category", "General")
@@ -239,19 +243,13 @@ def display_previous_recommendations(history):
         display_historical_procurement_report(history[record_number - 1])
 
 
-def print_section_heading(title, width=50):
-    print("\n" + "=" * width)
-    print(title.center(width))
-    print("=" * width)
-
-
 def display_historical_procurement_report(record):
     print_section_heading("HISTORICAL PROCUREMENT ASSESSMENT")
 
     print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
     print(f"Item ID: {record.get('item_id', 'N/A')}")
     print(f"Date: {record.get('timestamp', 'N/A')}")
-    print(f"Decision: {record.get('approval_status', 'N/A')})")
+    print(f"Decision: {record.get('approval_status', 'N/A')}")
     print(f"Action: {record.get('action', 'N/A')}")
     print(
         f"Recommended Quantity: "
