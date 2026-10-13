@@ -1,0 +1,1 @@
+{"schema_version": 1, "records": [{"item_id": "Printer Ribbon", "item_name": "Printer Ribbon", "current_stock": 20, "weekly_usage": 10.0, "lead_time_weeks": 2, "operational_notes": "Supplier was late twice this month and communication has been slow.", "category": "General", "moq": 5, "unit_cost": 3.0, "budget": 50.0}]}
