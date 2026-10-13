@@ -24,19 +24,12 @@
 
  
 import math
+from config import ALLOWED_ANSWERS
  
-# Temporarily disabled for the basic integration.
-EXTENDED_FEATURES_ENABLED = False
+# Switched on for integration.
+EXTENDED_FEATURES_ENABLED = True
  
 CORE_INPUT_FIELDS = ("current_stock", "weekly_usage", "lead_time_weeks")
- 
-# Categorical fields the AI must return. "reason" is free text and is validated separately in _validate_assessment().
-AI_VALUES = {
-    "demand_level": {"low", "medium", "high"},
-    "demand_trend": {"stable", "increasing", "decreasing"},
-    "supply_risk": {"low", "medium", "high"},
-    "operational_importance": {"low", "medium", "high"},
-}
  
  
 def _number(record, key, *, allow_zero=True):
@@ -56,7 +49,7 @@ def _validate_assessment(assessment):
     # Check the AI assessment schema (stock_condition/stockout_risk removed).
     if not isinstance(assessment, dict):
         raise ValueError("assessment must be a dictionary")
-    for field, accepted in AI_VALUES.items():
+    for field, accepted in ALLOWED_ANSWERS.items():
         value = assessment.get(field)
         if not isinstance(value, str) or value.lower() not in accepted:
             raise ValueError(f"assessment.{field} must be one of {sorted(accepted)}")
@@ -147,6 +140,17 @@ def determine_priority(coverage_weeks, lead_time_weeks, reorder_needed,
     return "LOW"
  
  
+def safety_weeks(assessment):
+    # How many weeks of safety cushion to keep, based on the AI's view.
+    weeks = 1.0  # normal: one week of usage
+    if assessment["demand_trend"].lower() == "increasing":
+        weeks = weeks + 0.5  # usage is rising, keep more spare
+    if assessment["supply_risk"].lower() == "high":
+        weeks = weeks + 0.5  # supplier may be late, keep more spare
+    if assessment["operational_importance"].lower() == "high":
+        weeks = weeks + 0.5  # running out would hurt, keep more spare
+    return weeks
+
 def analyse_inventory(inventory, assessment, safety_stock=None):
     
     if not isinstance(inventory, dict):
@@ -165,12 +169,15 @@ def analyse_inventory(inventory, assessment, safety_stock=None):
                 or safety_stock < 0):
             raise ValueError("safety_stock must be a non-negative number")
         safety_stock = float(safety_stock)
+    elif EXTENDED_FEATURES_ENABLED:
+        safety_stock = math.ceil(usage * safety_weeks(assessment)) 
     else:
         safety_stock = usage  # default: one week of average usage
  
     coverage = calculate_stock_coverage(stock, usage)
     reorder_point = calculate_reorder_point(usage, lead_time, safety_stock)
-    order_quantity = recommend_order_quantity(stock, reorder_point, moq)
+    order_target = reorder_point + usage * 2   # refill above the warning line
+    order_quantity = math.ceil(recommend_order_quantity(stock, order_target, moq))
     reorder_needed = order_quantity > 0
 
     stock_condition = derive_stock_condition(stock, usage, reorder_point, safety_stock)
@@ -197,8 +204,10 @@ def analyse_inventory(inventory, assessment, safety_stock=None):
         estimated_cost = order_quantity * unit_cost
         result.update({
             "stock_coverage": round(coverage, 2) if coverage is not None else None,
-            "reorder_point": round(reorder_point, 2),
+            "reorder_point": math.ceil(reorder_point),
+            "safety_stock": round(safety_stock, 2),
             "estimated_cost": round(estimated_cost, 2),
+            "budget": round(budget, 2),
             "budget_escalation": estimated_cost > budget,
         })
  

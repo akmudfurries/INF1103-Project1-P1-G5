@@ -113,7 +113,13 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
     print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
     print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
-    print(f"Operational Notes: {inventory.get('operational_notes', 'None provided')}")
+    wrapped_notes = textwrap.fill(
+        inventory.get('operational_notes', 'None provided'),
+        width=75,
+        initial_indent="",
+        subsequent_indent=""
+    )
+    print(f"Operational Notes: \n{wrapped_notes}\n")
 
     coverage = analysis_result.get('stock_coverage')
     coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
@@ -136,6 +142,9 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     # Extended metrics conditional filter
     if "reorder_point" in analysis_result:
         print(f"Reorder Point:      {analysis_result['reorder_point']} units")
+
+    if "safety_stock" in analysis_result:
+        print(f"Safety Stock:       {analysis_result['safety_stock']} units")
 
     if "estimated_cost" in analysis_result:
         print(f"Estimated Cost:     ${analysis_result['estimated_cost']:.2f}")

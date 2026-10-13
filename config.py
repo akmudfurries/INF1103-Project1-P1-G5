@@ -14,15 +14,8 @@ DATA_DIR = "data"
 INVENTORY_FILE = os.path.join(DATA_DIR, "inventory.json")
 DECISIONS_FILE = os.path.join(DATA_DIR, "procurement_decisions.json")
 
-# values required by business_rules.py
-BUSINESS_AI_VALUES = {
-    "demand_level": {"low", "medium", "high"},
-    "demand_trend": {"stable", "increasing", "decreasing"},
-    "supply_risk": {"low", "medium", "high"},
-    "operational_importance": {"low", "medium", "high"},
-}
 
-# Allowed answers for each question
+# --- Allowed Ans For Ai And Business Rules ---
 ALLOWED_ANSWERS = { 
     "demand_level": ["low", "medium", "high"],
     "demand_trend": ["stable", "increasing", "decreasing"],
