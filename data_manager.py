@@ -1,5 +1,5 @@
 
-
+from datetime import datetime
 
 def build_inventory_record(
     item_id,
@@ -68,15 +68,20 @@ def build_procurement_record(
     priority,
     action,
     approval_status,
-    rejection_reason=None
+    rejection_reason=None,
+    timestamp = None
 ):
+    if timestamp is None:
+        timestamp = datetime.now().isoformat(timespec="seconds")
+
     record = {
         "item_id": item_id,
         "recommended_quantity": recommended_quantity,
         "priority": priority,
         "action": action,
         "approval_status": approval_status,
-        "rejection_reason": rejection_reason
+        "rejection_reason": rejection_reason,
+        "timestamp": timestamp
     }
 
     validate_procurement_record(record)
@@ -90,6 +95,7 @@ def validate_procurement_record(record):
         "priority", 
         "action", 
         "approval_status",
+        "timestamp"
     ]
 
     if not isinstance(record, dict):
@@ -135,7 +141,8 @@ def validate_procurement_record(record):
         raise ValueError(
             "rejection_reason must be None unless status is REJECTED."
         )
-    
+    if not isinstance(record["timestamp"], str) or not record["timestamp"].strip():
+        raise ValueError("timestamp must be a non-empty string.")
     return True
 
 def find_record_by_id(records, record_id, id_field):
@@ -170,6 +177,27 @@ def update_record(records, record_id, updates, id_field):
 
     return True, None
 
+def update_procurement_record(records, item_id, updates):
+    record = find_record_by_id(records, item_id, "item_id")
+
+    if record is None:
+        return False, f"Record not found: {item_id}"
+
+    if "item_id" in updates and updates["item_id"] != item_id:
+        return False, "Record ID cannot be changed."
+
+    updated_record = record.copy()
+    updated_record.update(updates)
+
+    try:
+        validate_procurement_record(updated_record)
+    except ValueError as error:
+        return False, str(error)
+
+    record.update(updates)
+
+    return True, None
+
 def link_procurement_to_item(procurement_record, inventory_records):
     item_id = procurement_record.get("item_id")
 
@@ -196,3 +224,9 @@ def create_procurement_from_business_rule(item_id, business_rule_output, approva
         approval_status,
         rejection_reason
     )
+
+def get_procurement_record_by_number(records, record_number):
+    if record_number < 1 or record_number > len(records):
+        return None
+
+    return records[record_number - 1]

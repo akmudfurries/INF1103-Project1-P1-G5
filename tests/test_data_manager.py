@@ -15,6 +15,8 @@ from data_manager import update_record
 from data_manager import link_procurement_to_item
 from data_manager import get_records_for_item
 from data_manager import create_procurement_from_business_rule
+from data_manager import update_procurement_record
+from data_manager import get_procurement_record_by_number
 
 from file_manager import save_records, load_records
 
@@ -116,6 +118,60 @@ def test_missing_procurement_field():
     except ValueError:
         pass
 
+def test_update_procurement_record_rejected_with_reason():
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    updates = {
+        "approval_status": "REJECTED",
+        "rejection_reason": "Budget exceeded"
+    }
+
+    success, error = update_procurement_record(
+        records,
+        "INV001",
+        updates
+    )
+
+    assert success is True
+    assert error is None
+    assert records[0]["approval_status"] == "REJECTED"
+    assert records[0]["rejection_reason"] == "Budget exceeded"
+
+def test_update_procurement_record_rejected_wihtout_reason():
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    updates = {
+        "approval_status":"REJECTED"
+    }
+
+    success, error = update_procurement_record(
+        records, 
+        "INV001",
+        updates
+    )
+
+    assert success is False
+    assert records[0]["approval_status"] == "PENDING"
+    assert records[0]["rejection_reason"] is None
+
+
+
 
 def test_negative_recommended_quantity():
     try:
@@ -184,18 +240,66 @@ def test_invalid_approval_status():
 
 
 def test_approval_status_values():
-    for status in ["PENDING", "APPROVED", "REJECTED"]:
-        reason = "Cost too high" if status == "REJECTED" else None
+    for status in ["PENDING", "APPROVED"]:
         record = build_procurement_record(
             "INV001",
             50,
             "HIGH",
             "REORDER",
-            status,
-            rejection_reason=reason
+            status
         )
 
         assert record["approval_status"] == status
+
+    record = build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "REJECTED",
+            "Budget exceeded"
+    )
+
+    assert record["approval_status"] == "REJECTED"
+    assert record["rejection_reason"] == "Budget exceeded"
+
+def test_extended_procurement_persistance(tmp_path):
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    extended_updates = {
+        "estimated_cost": 600.00,
+        "budget_escalation": True
+    }
+
+    success, error = update_procurement_record(
+        records,
+        "INV001",
+        extended_updates
+    )
+
+    assert success is True
+    assert error is None
+
+    file_path =  str(tmp_path / "extended_procurement.json")
+
+    save_records(file_path, records)
+
+    loaded_records = load_records(file_path)
+
+    assert len(loaded_records) == 1
+    assert loaded_records[0]["item_id"] == "INV001"
+    assert loaded_records[0]["estimated_cost"] == 600.00
+    assert loaded_records[0]["budget_escalation"] is True
+    assert "timestamp" in loaded_records[0]
+    assert loaded_records[0]["timestamp"] != ""
 
 # =====================================================================
 # Record Management Tests
@@ -468,3 +572,127 @@ def test_store_approval_status_and_procurement_decision(tmp_path):
     assert loaded_records[0]["approval_status"] == "APPROVED"
     assert loaded_records[0]["recommended_quantity"] == 50
     assert loaded_records[0]["action"] == "REORDER"
+
+def test_manage_extended_inventory_data():
+    records = []
+
+    extended_record = {
+        "item_id": "INV001",
+        "item_name": "Industrial Printer Ribbon",
+        "current_stock": 42,
+        "weekly_usage": 15,
+        "lead_time_weeks": 2,
+        "operational_notes": "Demand increased recently",
+        "safety_stock": 15,
+        "moq": 50,
+        "unit_cost": 12.00,
+        "budget": 500.00,
+        "stock_coverage": 2.8,
+        "reorder_point": 45
+    }
+
+    success, error = add_record(
+        records, 
+        extended_record,
+        "item_id"
+    )
+
+    assert success is True
+    assert error is None
+
+    updates = {
+        "moq": 60,
+        "budget": 600.00,
+        "safety_stock": 20
+    }
+
+    success, error = update_record(
+        records,
+        "INV001",
+        updates,
+        "item_id"
+    )
+
+    assert success is True
+    assert error is None
+
+    record = find_record_by_id(
+        records,
+        "INV001",
+        "item_id"
+    )
+
+    assert record["moq"] == 60
+    assert record["budget"] == 600.00
+    assert record["safety_stock"] == 20
+    assert record["unit_cost"] == 12.00
+    assert record["stock_coverage"] == 2.8
+    assert record["reorder_point"] == 45
+
+def test_manage_extended_procurement_data():
+    records = [
+        build_procurement_record(
+            "INV001",
+            50,
+            "HIGH",
+            "REORDER",
+            "PENDING"
+        )
+    ]
+
+    extended_updates = {
+        "estimated_cost": 600.00,
+        "budget_escalation": True
+    }
+
+    success, error= update_procurement_record(
+        records,
+        "INV001",
+        extended_updates
+    )
+
+    assert success is True
+    assert error is None
+
+    record = find_record_by_id(
+        records,
+        "INV001",
+        "item_id"
+    )
+
+    assert record["estimated_cost"] == 600.00
+    assert record["budget_escalation"] is True
+
+def test_procurement_timestamp_created():
+    record = build_procurement_record(
+        "INV001",
+        50,
+        "HIGH",
+        "REORDER",
+        "PENDING"
+    )
+
+    assert "timestamp" in record
+    assert isinstance(record["timestamp"], str)
+    assert record["timestamp"] != ""
+
+def test_get_procurement_record_by_number():
+    records = [
+        {"item_id": "INV001"},
+        {"item_id": "INV002"},
+        {"item_id": "INV003"}
+    ]
+
+    result = get_procurement_record_by_number(records, 2)
+
+    assert result["item_id"] == "INV002"
+
+def test_get_procurement_record_by_invalid_number():
+    records = [
+        {"item_id": "INV001"}
+    ]
+
+    result = get_procurement_record_by_number(records, 5)
+
+    assert result is None
+
