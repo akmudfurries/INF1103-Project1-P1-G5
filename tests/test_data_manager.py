@@ -185,12 +185,14 @@ def test_invalid_approval_status():
 
 def test_approval_status_values():
     for status in ["PENDING", "APPROVED", "REJECTED"]:
+        reason = "Cost too high" if status == "REJECTED" else None
         record = build_procurement_record(
             "INV001",
             50,
             "HIGH",
             "REORDER",
-            status
+            status,
+            rejection_reason=reason
         )
 
         assert record["approval_status"] == status
