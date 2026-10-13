@@ -110,11 +110,16 @@ def run_inventory_analysis():
     # Create procurement decision record
     try:
         procurement_record = data_manager.create_procurement_from_business_rule(
-            inventory["item_id"],
-            analysis_result,
-            approval_status,
-            rejection_reason if approval_status == "REJECTED" else None
+            item_id=inventory["item_id"],
+            business_rule_output=analysis_result,
+            approval_status=approval_status,
+            rejection_reason=(
+                rejection_reason if approval_status == "REJECTED" else None
+            ),
+            inventory_snapshot=inventory,
+            ai_assessment=ai_assessment
         )
+
     except (ValueError, KeyError) as error:
         print(f"\n[ERROR] Failed to create procurement record: {error}")
         return
