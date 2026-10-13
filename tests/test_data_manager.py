@@ -129,6 +129,8 @@ def test_update_procurement_record_rejected_with_reason():
         )
     ]
 
+    procurement_id = records[0]["procurement_id"]
+
     updates = {
         "approval_status": "REJECTED",
         "rejection_reason": "Budget exceeded"
@@ -136,7 +138,7 @@ def test_update_procurement_record_rejected_with_reason():
 
     success, error = update_procurement_record(
         records,
-        "INV001",
+        procurement_id,
         updates
     )
 
@@ -156,13 +158,15 @@ def test_update_procurement_record_rejected_wihtout_reason():
         )
     ]
 
+    procurement_id = records[0]["procurement_id"]
+
     updates = {
         "approval_status":"REJECTED"
     }
 
     success, error = update_procurement_record(
         records, 
-        "INV001",
+        procurement_id,
         updates
     )
 
@@ -274,6 +278,8 @@ def test_extended_procurement_persistance(tmp_path):
         )
     ]
 
+    procurement_id = records[0]["procurement_id"]
+
     extended_updates = {
         "estimated_cost": 600.00,
         "budget_escalation": True
@@ -281,7 +287,7 @@ def test_extended_procurement_persistance(tmp_path):
 
     success, error = update_procurement_record(
         records,
-        "INV001",
+        procurement_id,
         extended_updates
     )
 
@@ -640,6 +646,8 @@ def test_manage_extended_procurement_data():
         )
     ]
 
+    procurement_id = records[0]["procurement_id"]
+
     extended_updates = {
         "estimated_cost": 600.00,
         "budget_escalation": True
@@ -647,7 +655,7 @@ def test_manage_extended_procurement_data():
 
     success, error= update_procurement_record(
         records,
-        "INV001",
+        procurement_id,
         extended_updates
     )
 
