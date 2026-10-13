@@ -2,6 +2,10 @@ import config
 import validation
 import textwrap
 
+def print_section_heading(title, width=50):
+    print("\n" + "=" * width)
+    print(title.center(width))
+    print("=" * width)
 
 def print_header(): # display top app title banner
     print(config.BANNER_CHAR * config.LINE_WIDTH)
@@ -81,7 +85,7 @@ def display_inventory_records(records): # displays saved inventory records
         print("\nNo inventory records found.")
         return
 
-    print("\n--- STORED INVENTORY RECORDS ---")
+    print_section_heading("STORED INVENTORY RECORDS")
     for idx, item in enumerate(records, start=1):
         name = item.get("item_name") or item.get("item", "Unknown Item")
         cat = item.get("category", "General")
@@ -132,8 +136,14 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
     print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
     print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
-    print(f"Reason:                 {ai_assessment.get('reason', 'N/A')}")
-
+    wrapped_notes = textwrap.fill(
+        ai_assessment.get('reason', 'N/A'),
+        width=75,
+        initial_indent="",
+        subsequent_indent=""
+    )
+    print(f"Reason: \n{wrapped_notes}\n")
+    
     # procurement analysis calculations (ref to business_rules.py)
     print("\n[Procurement Analysis]")
     print(config.DIVIDER_CHAR * 30)
@@ -173,49 +183,123 @@ def prompt_user_approval(): # prompts user to approve or reject the generated pr
             return "APPROVED", ""
         elif choice in ['N', 'NO']:
             while True:
-                reason = input("Enter reason for rejection/overriding decision: ").strip()
+                reason = input(
+                    "Enter reason for rejection/overriding decision: "
+                ).strip()
+
                 if reason:
-                    break
-                print("Reason cannot be empty. Please type a reason.")
-            print(f"\n[STATUS] Procurement recommendation REJECTED. (Reason: {reason})")
-            return "REJECTED", reason
+                    print(
+                        f"\n[STATUS] Procurement recommendation REJECTED. "
+                        f"(Reason: {reason})"
+                    )
+                    return "REJECTED", reason
+
+                print("[ERROR] A rejection reason is required.")
+
         elif choice in ['Q', 'QUIT']:
             print("\n[STATUS] Decision deferred. Marked as PENDING.")
             return "PENDING", ""
         else:
             print("Invalid response. Please enter 'Y' for Yes, 'N' for No, or 'Q' to Quit.")
 
-def display_previous_recommendations(history): # displays log of previous decisions  
+def display_previous_recommendations(history):
+    print("\n--- PREVIOUS PROCUREMENT ASSESSMENTS ---")
+
     if not history:
-        print("\nNo previous procurement recommendations found.")
+        print("No previous procurement assessments found.")
         return
-    
-    print("\n--- PREVIOUS RECOMMENDATIONS & DECISIONS ---")
+
     for idx, record in enumerate(history, start=1):
-        item_id = record.get('item_id', 'Unknown')
-        action = record.get('action', 'N/A')
-        status = record.get('approval_status', 'N/A')
-        print(f"[{idx}] Item ID: {item_id} | Action: {action} | Status: {status}")
+        item_id = record.get("item_id", "Unknown")
+        action = record.get("action", "N/A")
+        status = record.get("approval_status", "N/A")
+        timestamp = record.get("timestamp", "N/A")
 
-    print("-" * config.LINE_WIDTH)
-    choice = input("\nEnter record number to view full details (or 'q' to return):").strip()
+        print(
+            f"[{idx}] Item: {item_id} | "
+            f"Action: {action} | Status: {status} | "
+            f"Date: {timestamp}"
+        )
 
-    if choice.lower() in ['q', 'quit']:
-        return
+    while True:
+        choice = input(
+            "\nEnter assessment number to view details, "
+            "or 'q' to return: "
+        ).strip()
 
-    if choice.isdigit():
-        idx = int(choice) - 1
-        if 0 <= idx < len(history):
-            selected = history[idx]
-            print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
-            print(f" FULL DETAILS FOR RECORD #{idx + 1}".center(config.LINE_WIDTH))
-            print(config.BANNER_CHAR * config.LINE_WIDTH)
-            
-            for key, value in selected.items():
-                print(f"  {key.replace('_', ' ').title():<24}: {value}")
-                
-            print(config.BANNER_CHAR * config.LINE_WIDTH)
-        else:
-            print("\n[ERROR] Invalid record number.")
+        if choice.lower() in ["q", "quit"]:
+            return
+
+        if not choice.isdigit():
+            print("Invalid input. Enter a number or 'q'.")
+            continue
+
+        record_number = int(choice)
+
+        if record_number < 1 or record_number > len(history):
+            print("Invalid assessment number.")
+            continue
+
+        display_historical_procurement_report(history[record_number - 1])
+
+def print_wrapped_field(label, value, width=75):
+    text = str(value or "N/A")
+    wrapped_text = textwrap.fill(
+        text,
+        width=width,
+    )
+    print(f"{label}: \n{wrapped_text}")
+
+
+def display_historical_procurement_report(record):
+    print_section_heading("HISTORICAL PROCUREMENT ASSESSMENT")
+
+    print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
+    print(f"Item ID: {record.get('item_id', 'N/A')}")
+    print(f"Date: {record.get('timestamp', 'N/A')}")
+    print(f"Decision: {record.get('approval_status', 'N/A')}")
+    print(f"Action: {record.get('action', 'N/A')}")
+    print(
+        f"Recommended Quantity: "
+        f"{record.get('recommended_quantity', 'N/A')}"
+    )
+    print(f"Priority: {record.get('priority', 'N/A')}")
+
+    inventory = record.get("inventory_snapshot") or {}
+    ai_assessment = record.get("ai_assessment") or {}
+    analysis = record.get("analysis_result") or {}
+
+    print_section_heading("ORIGINAL INVENTORY DETAILS")
+    if inventory:
+        for field, value in inventory.items():
+            label = field.replace("_", " ").title()
+
+            if field == "operational_notes":
+                print_wrapped_field(label, value)
+            else:
+                print(f"{label}: {value}")
     else:
-        print("\n[ERROR] Please enter a valid number.")
+        print("No historical inventory snapshot available.")
+
+    print_section_heading("AI ASSESSMENT")
+    if ai_assessment:
+        for field, value in ai_assessment.items():
+            label = field.replace("_", " ").title()
+
+            if field == "reason":
+                print_wrapped_field(label, value)
+            else:
+                print(f"{label}: {value}")
+    else:
+        print("No historical AI assessment available.")
+
+    print_section_heading("PROCUREMENT ANALYSIS")
+    if analysis:
+        for field, value in analysis.items():
+            print(f"{field.replace('_', ' ').title()}: {value}")
+    else:
+        print("No historical analysis result available.")
+
+    rejection_reason = record.get("rejection_reason")
+    if rejection_reason:
+        print(f"\nRejection Reason: {rejection_reason}")

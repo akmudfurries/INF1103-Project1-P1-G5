@@ -1,4 +1,4 @@
-
+from uuid import uuid4
 from datetime import datetime
 
 def build_inventory_record(
@@ -69,57 +69,79 @@ def build_procurement_record(
     action,
     approval_status,
     rejection_reason=None,
-    timestamp = None
+    timestamp=None,
+    inventory_snapshot=None,
+    ai_assessment=None,
+    analysis_result=None,
+    procurement_id=None
 ):
     if timestamp is None:
         timestamp = datetime.now().isoformat(timespec="seconds")
 
+    if procurement_id is None:
+        procurement_id = str(uuid4())
+
     record = {
+        "procurement_id": procurement_id,
         "item_id": item_id,
         "recommended_quantity": recommended_quantity,
         "priority": priority,
         "action": action,
         "approval_status": approval_status,
         "rejection_reason": rejection_reason,
-        "timestamp": timestamp
+        "timestamp": timestamp,
+        "inventory_snapshot": (
+            inventory_snapshot.copy()
+            if isinstance(inventory_snapshot, dict)
+            else inventory_snapshot
+        ),
+        "ai_assessment": (
+            ai_assessment.copy()
+            if isinstance(ai_assessment, dict)
+            else ai_assessment
+        ),
+        "analysis_result": (
+            analysis_result.copy()
+            if isinstance(analysis_result, dict)
+            else analysis_result
+        )
     }
 
     validate_procurement_record(record)
-
     return record
 
+
 def validate_procurement_record(record):
+    if not isinstance(record, dict):
+        raise ValueError("Procurement record must be a dictionary.")
+
     required_fields = [
-        "item_id", 
-        "recommended_quantity", 
-        "priority", 
-        "action", 
+        "procurement_id",
+        "item_id",
+        "recommended_quantity",
+        "priority",
+        "action",
         "approval_status",
         "timestamp"
     ]
-
-    if not isinstance(record, dict):
-        raise ValueError("Procurement record must be a dictionary.")
 
     for field in required_fields:
         if field not in record:
             raise ValueError(f"Missing required field: {field}")
 
-    if not isinstance(record["item_id"], str) or not record["item_id"].strip():
-        raise ValueError("item_id must be a non-empty string.")
+    for field in [
+        "procurement_id", "item_id", "priority", "action", "timestamp"
+    ]:
+        if not isinstance(record[field], str) or not record[field].strip():
+            raise ValueError(f"{field} must be a non-empty string.")
 
-    if not isinstance(record["recommended_quantity"], int) \
-            or isinstance(record["recommended_quantity"], bool):
+    quantity = record["recommended_quantity"]
+
+    if not isinstance(quantity, int) or isinstance(quantity, bool):
         raise ValueError("recommended_quantity must be an integer.")
 
-    if record["recommended_quantity"] < 0:
+    if quantity < 0:
         raise ValueError("recommended_quantity cannot be negative.")
-
-    if not isinstance(record["priority"], str) or not record["priority"].strip():
-        raise ValueError("priority must be a non-empty string.")
-
-    if not isinstance(record["action"], str) or not record["action"].strip():
-        raise ValueError("action must be a non-empty string.")
 
     valid_statuses = {"PENDING", "APPROVED", "REJECTED"}
 
@@ -130,20 +152,26 @@ def validate_procurement_record(record):
 
     rejection_reason = record.get("rejection_reason")
 
-    if rejection_reason is not None and not isinstance(rejection_reason, str):
-        raise ValueError("rejection_reason must be a string or None.")
-
     if record["approval_status"] == "REJECTED":
-        if not rejection_reason or not rejection_reason.strip():
-            raise ValueError("A rejection reason is required when status is REJECTED.")
-
+        if not isinstance(rejection_reason, str) or not rejection_reason.strip():
+            raise ValueError(
+                "A rejection reason is required when status is REJECTED."
+            )
     elif rejection_reason is not None:
         raise ValueError(
             "rejection_reason must be None unless status is REJECTED."
         )
-    if not isinstance(record["timestamp"], str) or not record["timestamp"].strip():
-        raise ValueError("timestamp must be a non-empty string.")
+
+    for field in [
+        "inventory_snapshot", "ai_assessment", "analysis_result"
+    ]:
+        value = record.get(field)
+
+        if value is not None and not isinstance(value, dict):
+            raise ValueError(f"{field} must be a dictionary or None.")
+
     return True
+
 
 def find_record_by_id(records, record_id, id_field):
     for record in records:
@@ -170,21 +198,47 @@ def update_record(records, record_id, updates, id_field):
     if record is None:
         return False, f"Record not found: {record_id}"
 
-    if id_field in updates and updates[id_field] !=  record_id:
+    if id_field in updates and updates[id_field] != record_id:
         return False, "Record ID cannot be changed."
+
+    updated_record = record.copy()
+    updated_record.update(updates)
+
+    # Validate inventory records before applying changes.
+    if all(
+        field in updated_record
+        for field in [
+            "item_id",
+            "item_name",
+            "current_stock",
+            "weekly_usage",
+            "lead_time_weeks",
+            "operational_notes"
+        ]
+    ):
+        try:
+            validate_inventory_record(updated_record)
+        except ValueError as error:
+            return False, str(error)
 
     record.update(updates)
-
     return True, None
 
-def update_procurement_record(records, item_id, updates):
-    record = find_record_by_id(records, item_id, "item_id")
+def update_procurement_record(records, procurement_id, updates):
+    record = find_record_by_id(
+        records,
+        procurement_id,
+        "procurement_id"
+    )
 
     if record is None:
-        return False, f"Record not found: {item_id}"
+        return False, f"Procurement record not found: {procurement_id}"
 
-    if "item_id" in updates and updates["item_id"] != item_id:
-        return False, "Record ID cannot be changed."
+    if (
+        "procurement_id" in updates
+        and updates["procurement_id"] != procurement_id
+    ):
+        return False, "Procurement ID cannot be changed."
 
     updated_record = record.copy()
     updated_record.update(updates)
@@ -195,8 +249,8 @@ def update_procurement_record(records, item_id, updates):
         return False, str(error)
 
     record.update(updates)
-
     return True, None
+
 
 def link_procurement_to_item(procurement_record, inventory_records):
     item_id = procurement_record.get("item_id")
@@ -215,14 +269,25 @@ def get_records_for_item(records, item_id):
     
     return matching_records
 
-def create_procurement_from_business_rule(item_id, business_rule_output, approval_status, rejection_reason=None):
+
+def create_procurement_from_business_rule(
+    item_id,
+    business_rule_output,
+    approval_status,
+    rejection_reason=None,
+    inventory_snapshot=None,
+    ai_assessment=None
+):
     return build_procurement_record(
-        item_id,
-        business_rule_output["recommended_quantity"],
-        business_rule_output["priority"],
-        business_rule_output["action"],
-        approval_status,
-        rejection_reason
+        item_id=item_id,
+        recommended_quantity=business_rule_output["recommended_quantity"],
+        priority=business_rule_output["priority"],
+        action=business_rule_output["action"],
+        approval_status=approval_status,
+        rejection_reason=rejection_reason,
+        inventory_snapshot=inventory_snapshot,
+        ai_assessment=ai_assessment,
+        analysis_result=business_rule_output
     )
 
 def get_procurement_record_by_number(records, record_number):
