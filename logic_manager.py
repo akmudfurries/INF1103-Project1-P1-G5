@@ -152,7 +152,7 @@ def safety_weeks(assessment):
     return weeks
 
 def analyse_inventory(inventory, assessment, safety_stock=None):
-    
+
     if not isinstance(inventory, dict):
         raise ValueError("inventory must be a dictionary")
     _validate_assessment(assessment)
@@ -174,11 +174,22 @@ def analyse_inventory(inventory, assessment, safety_stock=None):
     else:
         safety_stock = usage  # default: one week of average usage
  
+    
     coverage = calculate_stock_coverage(stock, usage)
-    reorder_point = calculate_reorder_point(usage, lead_time, safety_stock)
-    order_target = reorder_point + usage * 2   # refill above the warning line
-    order_quantity = math.ceil(recommend_order_quantity(stock, order_target, moq))
-    reorder_needed = order_quantity > 0
+    reorder_point = calculate_reorder_point(
+        usage, lead_time, safety_stock
+    )
+
+    reorder_needed = usage > 0 and stock <= reorder_point
+
+    if reorder_needed:
+        order_target = reorder_point + usage * 2
+        order_quantity = math.ceil(
+            recommend_order_quantity(stock, order_target, moq)
+        )
+    else:
+        order_quantity = 0
+
 
     stock_condition = derive_stock_condition(stock, usage, reorder_point, safety_stock)
     stockout_risk = derive_stockout_risk(coverage, lead_time, stock, reorder_point)

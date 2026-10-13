@@ -129,11 +129,14 @@ def validate_procurement_record(record):
         if field not in record:
             raise ValueError(f"Missing required field: {field}")
 
-    for field in ["procurement_id", "item_id", "priority", "action", "timestamp"]:
+    for field in [
+        "procurement_id", "item_id", "priority", "action", "timestamp"
+    ]:
         if not isinstance(record[field], str) or not record[field].strip():
             raise ValueError(f"{field} must be a non-empty string.")
 
     quantity = record["recommended_quantity"]
+
     if not isinstance(quantity, int) or isinstance(quantity, bool):
         raise ValueError("recommended_quantity must be an integer.")
 
@@ -141,6 +144,7 @@ def validate_procurement_record(record):
         raise ValueError("recommended_quantity cannot be negative.")
 
     valid_statuses = {"PENDING", "APPROVED", "REJECTED"}
+
     if record["approval_status"] not in valid_statuses:
         raise ValueError(
             f"approval_status must be one of {sorted(valid_statuses)}."
@@ -158,8 +162,11 @@ def validate_procurement_record(record):
             "rejection_reason must be None unless status is REJECTED."
         )
 
-    for field in ["inventory_snapshot", "ai_assessment", "analysis_result"]:
+    for field in [
+        "inventory_snapshot", "ai_assessment", "analysis_result"
+    ]:
         value = record.get(field)
+
         if value is not None and not isinstance(value, dict):
             raise ValueError(f"{field} must be a dictionary or None.")
 

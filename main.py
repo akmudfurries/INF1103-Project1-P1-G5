@@ -118,7 +118,8 @@ def run_inventory_analysis():
             ),
             inventory_snapshot=inventory,
             ai_assessment=ai_assessment
-        )
+)
+
 
     except (ValueError, KeyError) as error:
         print(f"\n[ERROR] Failed to create procurement record: {error}")
