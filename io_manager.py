@@ -132,8 +132,14 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
     print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
     print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
-    print(f"Reason:                 {ai_assessment.get('reason', 'N/A')}")
-
+    wrapped_notes = textwrap.fill(
+        ai_assessment.get('reason', 'N/A'),
+        width=75,
+        initial_indent="",
+        subsequent_indent=""
+    )
+    print(f"Reason: \n{wrapped_notes}\n")
+    
     # procurement analysis calculations (ref to business_rules.py)
     print("\n[Procurement Analysis]")
     print(config.DIVIDER_CHAR * 30)
