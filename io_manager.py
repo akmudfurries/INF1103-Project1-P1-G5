@@ -242,6 +242,14 @@ def display_previous_recommendations(history):
 
         display_historical_procurement_report(history[record_number - 1])
 
+def print_wrapped_field(label, value, width=75):
+    text = str(value or "N/A")
+    wrapped_text = textwrap.fill(
+        text,
+        width=width,
+    )
+    print(f"{label}: \n{wrapped_text}")
+
 
 def display_historical_procurement_report(record):
     print_section_heading("HISTORICAL PROCUREMENT ASSESSMENT")
@@ -264,14 +272,24 @@ def display_historical_procurement_report(record):
     print_section_heading("ORIGINAL INVENTORY DETAILS")
     if inventory:
         for field, value in inventory.items():
-            print(f"{field.replace('_', ' ').title()}: {value}")
+            label = field.replace("_", " ").title()
+
+            if field == "operational_notes":
+                print_wrapped_field(label, value)
+            else:
+                print(f"{label}: {value}")
     else:
         print("No historical inventory snapshot available.")
 
     print_section_heading("AI ASSESSMENT")
     if ai_assessment:
         for field, value in ai_assessment.items():
-            print(f"{field.replace('_', ' ').title()}: {value}")
+            label = field.replace("_", " ").title()
+
+            if field == "reason":
+                print_wrapped_field(label, value)
+            else:
+                print(f"{label}: {value}")
     else:
         print("No historical AI assessment available.")
 
