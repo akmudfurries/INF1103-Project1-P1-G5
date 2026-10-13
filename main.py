@@ -1,5 +1,5 @@
-import business_rules
-import ui_manager
+import logic_manager
+import io_manager
 import data_manager
 import file_manager
 import ai_manager
@@ -9,13 +9,13 @@ INVENTORY_FILE = "data/inventory.json"
 DECISIONS_FILE = "data/procurement_decisions.json"
 
 def add_inventory_record():
-    inventory_input = ui_manager.prompt_inventory_record()
+    inventory_input = io_manager.prompt_inventory_record()
     if not inventory_input:
         return
 
     try:
         inventory_record = data_manager.build_inventory_record(
-            # ui_manager now returns exact keys required by data_manager.build_inventory_record, so no need for mapping.
+            # io_manager now returns exact keys required by data_manager.build_inventory_record, so no need for mapping.
             item_id=inventory_input["item_id"],
             item_name=inventory_input["item_name"],
             current_stock=inventory_input["current_stock"],
@@ -24,7 +24,7 @@ def add_inventory_record():
             operational_notes=inventory_input["operational_notes"]
         )
 
-        # optional fields returned by ui
+        # optional fields returned by io_manager
         inventory_record["category"] = inventory_input["category"]
         inventory_record["moq"] = inventory_input["moq"]
         inventory_record["unit_cost"] = inventory_input["unit_cost"]
@@ -56,7 +56,7 @@ def add_inventory_record():
 
 def view_inventory_records():
     records = file_manager.load_records(INVENTORY_FILE)
-    ui_manager.display_inventory_records(records)
+    io_manager.display_inventory_records(records)
       
 
 def run_inventory_analysis():
@@ -68,7 +68,7 @@ def run_inventory_analysis():
     
 # removed temporary ui schema adaptor function
 
-    ui_manager.display_inventory_records(records)
+    io_manager.display_inventory_records(records)
 
     choice = input("\nEnter the inventory record number to analyse (or 'q' to cancel): ").strip()
     if choice.lower() in ['q', 'quit']:
@@ -96,16 +96,16 @@ def run_inventory_analysis():
 
     # run quantitative business rules analysis
     try:
-        analysis_result = business_rules.analyse_inventory(inventory, ai_assessment)
+        analysis_result = logic_manager.analyse_inventory(inventory, ai_assessment)
     except ValueError as err:
         print(f"\n[ERROR] Business Rule Calculation Error: {err}")
         return
 
     # display full report to user (ui)
-    ui_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
+    io_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
 
     # Prompt user for approval decision and rejection reason
-    approval_status, rejection_reason = ui_manager.prompt_user_approval()
+    approval_status, rejection_reason = io_manager.prompt_user_approval()
 
     # Create procurement decision record
     try:
@@ -131,14 +131,14 @@ def run_inventory_analysis():
 
 def view_previous_recommendations():
     decisions = file_manager.load_records(DECISIONS_FILE)
-    ui_manager.display_previous_recommendations(decisions)
+    io_manager.display_previous_recommendations(decisions)
 
 
 def main():
-    ui_manager.print_header()
+    io_manager.print_header()
 
     while True:
-        choice = ui_manager.get_main_menu_choice()
+        choice = io_manager.get_main_menu_choice()
 
         if choice == "1":
             add_inventory_record()
