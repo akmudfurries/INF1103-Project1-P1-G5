@@ -1,1 +1,77 @@
-{"schema_version": 1, "records": [{"item_id": "Printer Ribbon", "item_name": "Printer Ribbon", "current_stock": 20, "weekly_usage": 10.0, "lead_time_weeks": 2, "operational_notes": "Supplier was late twice this month and communication has been slow.", "category": "General", "moq": 5, "unit_cost": 3.0, "budget": 50.0}]}
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "item_id": "INV001",
+      "item_name": "Printer Ribbon",
+      "current_stock": 8,
+      "weekly_usage": 12,
+      "lead_time_weeks": 3,
+      "operational_notes": "Usage has increased steadily since a new warehouse opened. The supplier was late with the last two deliveries, and printing delays would slow daily dispatch operations.",
+      "safety_stock": 15,
+      "moq": 20,
+      "unit_cost": 8.5,
+      "budget": 500
+    },
+    {
+      "item_id": "INV002",
+      "item_name": "Hydraulic Hose",
+      "current_stock": 18,
+      "weekly_usage": 10,
+      "lead_time_weeks": 2,
+      "operational_notes": "Demand is stable and the supplier normally delivers on time. This hose is required for scheduled maintenance next week, and the affected machine cannot operate safely without it.",
+      "safety_stock": 5,
+      "moq": 10,
+      "unit_cost": 35,
+      "budget": 1000
+    },
+    {
+      "item_id": "INV003",
+      "item_name": "Packaging Tape",
+      "current_stock": 120,
+      "weekly_usage": 20,
+      "lead_time_weeks": 2,
+      "operational_notes": "Usage rose sharply last week because of a one-off bulk order. The order has been completed, normal usage is expected to resume, and the supplier has a reliable delivery record.",
+      "safety_stock": 10,
+      "moq": 24,
+      "unit_cost": 2,
+      "budget": 300
+    },
+    {
+      "item_id": "INV004",
+      "item_name": "Pressure Sensor",
+      "current_stock": 6,
+      "weekly_usage": 4,
+      "lead_time_weeks": 1,
+      "operational_notes": "Three sensors were found damaged during inspection. The replacement date is uncertain, but the sensors support equipment monitoring. A shortage could delay fault detection and maintenance.",
+      "safety_stock": 4,
+      "moq": 5,
+      "unit_cost": 75,
+      "budget": 600
+    },
+    {
+      "item_id": "INV005",
+      "item_name": "Protective Gloves",
+      "current_stock": 25,
+      "weekly_usage": 18,
+      "lead_time_weeks": 2,
+      "operational_notes": "Glove consumption has increased due to additional maintenance shifts. The supplier recently warned of possible delays, and insufficient stock would prevent some tasks from proceeding under site safety procedures.",
+      "safety_stock": 20,
+      "moq": 50,
+      "unit_cost": 3,
+      "budget": 250
+    },
+    {
+      "item_id": "INV006",
+      "item_name": "Legacy Machine Filter",
+      "current_stock": 75,
+      "weekly_usage": 2,
+      "lead_time_weeks": 4,
+      "operational_notes": "The machine using this filter was retired last month. The usage figure may be outdated because the inventory record has not yet been reviewed. Confirm whether the remaining filters are still required before placing another order.",
+      "safety_stock": 5,
+      "moq": 10,
+      "unit_cost": 18,
+      "budget": 400
+    }
+  ]
+}
