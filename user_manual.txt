@@ -4,10 +4,13 @@ setx GEMINI_API_KEY "your-key"
 #Bash version:
 export GEMINI_API_KEY="your-key"
 
-# Run the following command sequentially
+# First-time setup OR whenever you make changes to your Python code/Dockerfile:
 docker build -t devops_project .
 docker run --rm -it -e GEMINI_API_KEY -v devops_data:/app/data devops_project
+# Run above command only if setup before
 
-# One line execution:
+# Subsequent runs (Only if your code has NOT changed since the last build):
+docker run --rm -it -e GEMINI_API_KEY -v devops_data:/app/data devops_project
+
 # Bash One-Liner Execution
 export GEMINI_API_KEY="your-key" && docker build -t devops_project . && docker run --rm -it -e GEMINI_API_KEY -v devops_data:/app/data devops_project
