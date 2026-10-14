@@ -136,8 +136,38 @@ def run_inventory_analysis():
 
 
 def view_previous_recommendations():
-    decisions = file_manager.load_records(DECISIONS_FILE)
-    io_manager.display_previous_recommendations(decisions)
+    while True:
+        decisions = file_manager.load_records(DECISIONS_FILE)
+        index = io_manager.display_previous_recommendations(decisions)
+
+        if index is None:
+            return
+
+        record = decisions[index]
+        io_manager.display_historical_procurement_report(record)
+        action, updates = io_manager.prompt_record_action(record)
+
+        if action == "UPDATE":
+            success, error = data_manager.update_procurement_record(
+                decisions, record["procurement_id"], updates
+            )
+            if not success:
+                print(f"\n[ERROR] {error}")
+                continue
+            if file_manager.save_records(DECISIONS_FILE, decisions):
+                print("\n[STATUS] Procurement status updated.")
+            else:
+                print("\n[ERROR] Failed to save changes.")
+
+        elif action == "DELETE":
+            decisions = [
+                r for r in decisions
+                if r.get("procurement_id") != record["procurement_id"]
+            ]
+            if file_manager.save_records(DECISIONS_FILE, decisions):
+                print("\n[STATUS] Procurement record deleted.")
+            else:
+                print("\n[ERROR] Failed to delete record.")
 
 
 def main():

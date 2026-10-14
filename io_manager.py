@@ -203,7 +203,7 @@ def display_previous_recommendations(history):
 
     if not history:
         print("No previous procurement assessments found.")
-        return
+        return None
 
     for idx, record in enumerate(history, start=1):
         item_id = record.get("item_id", "Unknown")
@@ -224,7 +224,7 @@ def display_previous_recommendations(history):
         ).strip()
 
         if choice.lower() in ["q", "quit"]:
-            return
+            return None
 
         if not choice.isdigit():
             print("Invalid input. Enter a number or 'q'.")
@@ -236,7 +236,7 @@ def display_previous_recommendations(history):
             print("Invalid assessment number.")
             continue
 
-        display_historical_procurement_report(history[record_number - 1])
+        return record_number - 1
 
 def print_wrapped_field(label, value, width=75):
     text = str(value or "N/A")
@@ -299,3 +299,54 @@ def display_historical_procurement_report(record):
     rejection_reason = record.get("rejection_reason")
     if rejection_reason:
         print(f"\nRejection Reason: {rejection_reason}")
+
+def prompt_record_action(record):
+    # Returns (action, data): ("UPDATE", updates_dict), ("DELETE", None) or ("BACK", None)
+    print_section_heading("Record Actions")
+    print("1. Change approval status")
+    print("2. Delete this record")
+    print("3. Back to list\n")
+
+    while True:
+        choice = input("Select an option (1-3): ").strip()
+
+        if choice == "1":
+            current = record.get("approval_status")
+            options = [s for s in ["PENDING", "APPROVED", "REJECTED"] if s != current]
+
+            print(f"\nCurrent status: {current}")
+            for number, status in enumerate(options, start=1):
+                print(f"{number}. {status}")
+
+            picked = input(f"Choose new status (1-{len(options)}, or 'q' to cancel): ").strip()
+            if picked.lower() in ["q", "quit"]:
+                return "BACK", None
+            if not picked.isdigit() or not 1 <= int(picked) <= len(options):
+                print("Invalid choice.")
+                continue
+
+            new_status = options[int(picked) - 1]
+
+            if new_status == "REJECTED":
+                reason = ""
+                while not reason:
+                    reason = input("Enter reason for rejection: ").strip()
+                    if not reason:
+                        print("[ERROR] A rejection reason is required.")
+                return "UPDATE", {"approval_status": "REJECTED", "rejection_reason": reason}
+
+            # APPROVED / PENDING must clear any old rejection reason
+            return "UPDATE", {"approval_status": new_status, "rejection_reason": None}
+
+        elif choice == "2":
+            confirm = input("Delete this record permanently? (Y/N): ").strip().upper()
+            if confirm in ["Y", "YES"]:
+                return "DELETE", None
+            print("Delete cancelled.")
+            return "BACK", None
+
+        elif choice == "3":
+            return "BACK", None
+
+        else:
+            print("Please enter 1, 2 or 3.")
