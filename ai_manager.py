@@ -8,7 +8,7 @@ from config import ALLOWED_ANSWERS, MAX_RETRIES
 
 def ai_error(error): # Turns Gemini error into text
     text = str(error).lower()
-    if "api key" in text:
+    if "api key" in text or "api_key" in text or "missing key" in text:
         return "AI is not set up. Check your API key."
     if "503" in text or "unavailable" in text:
         return "Gemini is busy. Try again later."
@@ -44,7 +44,7 @@ def ask_gemini(prompt: str): #Send the prompt to GEMINI.
     client = genai.Client(
         http_options=types.HttpOptions(
             timeout=30000, # 30 sec time limit
-            retry_options=types.HttpRetryOptions(attempts=2) # Dont Retry, Push to Ai Analaysis 
+            retry_options=types.HttpRetryOptions(attempts=1) # Dont Retry, Push to Ai Analaysis 
             ),
         )   # Reads API key, 
     response = client.models.generate_content(
@@ -99,6 +99,10 @@ def get_ai_analysis(item: dict, ask_function=ask_gemini): # Runs every step
             ai_reply = ask_function(prompt)
         except Exception as error:
             issue = ai_error(error)
+
+            # Stops the program from retrying when the problem is a bad or missing API key
+            if "api key" in str(error).lower():
+                return None, issue   # retrying will never help
 
             if "503" in str(error) or "unavailable" in str(error).lower():
                 if cycle < MAX_RETRIES:
