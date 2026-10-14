@@ -113,7 +113,6 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
 
     # quantitative inventory data
     print_section_heading("Inventory Data")
-    print(config.DIVIDER_CHAR * 30)
     print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
     print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
     print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
@@ -200,7 +199,7 @@ def prompt_user_approval(): # prompts user to approve or reject the generated pr
             print("Invalid response. Please enter 'Y' for Yes, 'N' for No, or 'Q' to Quit.")
 
 def display_previous_recommendations(history):
-    print("\n--- PREVIOUS PROCUREMENT ASSESSMENTS ---")
+    print_section_heading("PREVIOUS PROCUREMENT ASSESSMENTS")
 
     if not history:
         print("No previous procurement assessments found.")
