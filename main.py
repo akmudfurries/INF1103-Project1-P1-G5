@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import logic_manager
 import io_manager
@@ -150,7 +151,7 @@ def view_previous_recommendations():
         action, updates = io_manager.prompt_record_action(record)
 
         if action == "UPDATE":
-            updates["status_updated"] = datetime.now().isoformat(timespec="seconds")
+            updates["status_updated"] = datetime.now(ZoneInfo(config.TIMEZONE)).isoformat(timespec="seconds")
             success, error = data_manager.update_procurement_record(
                 decisions, record["procurement_id"], updates
             )

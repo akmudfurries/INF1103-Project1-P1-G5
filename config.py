@@ -1,6 +1,8 @@
 # config.py
 import os
 
+TIMEZONE = "Asia/Singapore"
+
 # --- APP IDENTIFICATION ---
 APP_TITLE = "AI INVENTORY & PROCUREMENT ADVISOR"
 APP_SUBTITLE = "Operational Insight & Procurement Engine"

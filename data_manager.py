@@ -1,5 +1,7 @@
 from uuid import uuid4
 from datetime import datetime
+from zoneinfo import ZoneInfo
+import config
 
 def build_inventory_record(
     item_id,
@@ -76,7 +78,7 @@ def build_procurement_record(
     procurement_id=None
 ):
     if timestamp is None:
-        timestamp = datetime.now().isoformat(timespec="seconds")
+            timestamp = datetime.now(ZoneInfo(config.TIMEZONE)).isoformat(timespec="seconds")
 
     if procurement_id is None:
         procurement_id = str(uuid4())

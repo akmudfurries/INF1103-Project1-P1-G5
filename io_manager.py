@@ -1,6 +1,14 @@
 import config
 import validation
 import textwrap
+from datetime import datetime
+
+def format_timestamp(value):
+    # Turns '2026-10-14T16:54:03' into '14 Oct 2026, 04:54 PM'
+    try:
+        return datetime.fromisoformat(value).strftime("%d %b %Y, %I:%M %p")
+    except (TypeError, ValueError):
+        return value or "N/A"
 
 def print_section_heading(title, width=50):
     print("\n" + "=" * width)
@@ -140,7 +148,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
         initial_indent="",
         subsequent_indent=""
     )
-    print(f"Reason: \n{wrapped_notes}\n")
+    print(f"Reason: \n{wrapped_notes}")
     
     # procurement analysis calculations (ref to business_rules.py)
     print_section_heading("Procurement Analysis")
@@ -209,7 +217,7 @@ def display_previous_recommendations(history):
         item_id = record.get("item_id", "Unknown")
         action = record.get("action", "N/A")
         status = record.get("approval_status", "N/A")
-        timestamp = record.get("timestamp", "N/A")
+        timestamp = format_timestamp(record.get("timestamp"))
 
         print(
             f"[{idx}] Item: {item_id} | "
@@ -252,9 +260,9 @@ def display_historical_procurement_report(record):
 
     print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
     print(f"Item ID: {record.get('item_id', 'N/A')}")
-    print(f"Date: {record.get('timestamp', 'N/A')}")
+    print(f"Date: {format_timestamp(record.get('timestamp'))}")
     if record.get("status_updated"):
-        print(f"Status Last Updated: {record['status_updated']}")   
+        print(f"Status Last Updated: {format_timestamp(record['status_updated'])}")   
     print(f"Decision: {record.get('approval_status', 'N/A')}")
     print(f"Action: {record.get('action', 'N/A')}")
     print(
