@@ -112,7 +112,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Item Name: {item_name} ({category})")
 
     # quantitative inventory data
-    print("\n[Inventory Data]")
+    print_section_heading("Inventory Data")
     print(config.DIVIDER_CHAR * 30)
     print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
     print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
@@ -130,8 +130,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Stock Coverage:     {coverage_str}")
 
     # ai assessment (ref to ai_manager.py  / business_rules.py)
-    print("\n[AI Assessment]")
-    print(config.DIVIDER_CHAR * 30)
+    print_section_heading("AI Assessment")
     print(f"Demand Level:           {ai_assessment.get('demand_level', 'N/A').upper()}")
     print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
     print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
@@ -145,8 +144,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Reason: \n{wrapped_notes}\n")
     
     # procurement analysis calculations (ref to business_rules.py)
-    print("\n[Procurement Analysis]")
-    print(config.DIVIDER_CHAR * 30)
+    print_section_heading("Procurement Analysis")
     print(f"Recommended Order:  {analysis_result.get('recommended_quantity', 0)} units")
 
     # Extended metrics conditional filter
@@ -163,8 +161,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
         print(f"Available Budget:   ${analysis_result['budget']:.2f}")
 
     # decision output and priority
-    print("\n[Final Decision]")
-    print(config.DIVIDER_CHAR * 30)
+    print_section_heading("Final Decision")
     print(f"Priority:           {analysis_result.get('priority', 'NORMAL')}")
     print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
 
