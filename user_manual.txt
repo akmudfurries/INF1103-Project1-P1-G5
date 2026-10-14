@@ -1,0 +1,13 @@
+#Ensure API Key is in your Enviromental Variable
+#CMD version:
+setx GEMINI_API_KEY "your-key" 
+#Bash version:
+export GEMINI_API_KEY="your-key"
+
+# Run the following command sequentially
+docker build -t devops_project .
+docker run --rm -it -e GEMINI_API_KEY -v devops_data:/app/data devops_project
+
+# One line execution:
+# Bash One-Liner Execution
+export GEMINI_API_KEY="your-key" && docker build -t devops_project . && docker run --rm -it -e GEMINI_API_KEY -v devops_data:/app/data devops_project
