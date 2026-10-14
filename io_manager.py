@@ -247,7 +247,7 @@ def display_previous_recommendations(history):
 
         return record_number - 1
 
-def print_wrapped_field(label, value, width=75):
+def print_wrapped_field(label, value, width=50):
     text = str(value or "N/A")
     wrapped_text = textwrap.fill(
         text,
