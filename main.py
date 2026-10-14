@@ -60,7 +60,21 @@ def add_inventory_record():
 def view_inventory_records():
     records = file_manager.load_records(INVENTORY_FILE)
     io_manager.display_inventory_records(records)
-      
+
+def remove_inventory_record():
+    records = file_manager.load_records(INVENTORY_FILE)
+    index = io_manager.prompt_remove_inventory(records)
+
+    if index is None:
+        return
+
+    removed = records.pop(index)
+
+    if file_manager.save_records(INVENTORY_FILE, records):
+        name = removed.get("item_name") or removed.get("item_id")
+        print(f"\n[STATUS] Removed '{name}'.")
+    else:
+        print("\n[ERROR] Failed to remove inventory record.")
 
 def run_inventory_analysis():
     records = file_manager.load_records(INVENTORY_FILE)
@@ -192,12 +206,15 @@ def main():
         elif choice == "4":
             view_previous_recommendations()
 
-        elif choice in ["5", "q", "quit"]:
+        elif choice == "5":
+            remove_inventory_record()
+
+        elif choice in ["6", "q", "quit"]:
             print("Exiting application.")
             break
 
         else:
-            print("Please enter 1, 2, 3, 4 or '5' to exit application.")
+            print("Please enter 1, 2, 3, 4, 5 or '6' to exit application.")
 
 if __name__ == "__main__":
     main()

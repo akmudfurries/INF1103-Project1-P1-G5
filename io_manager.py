@@ -27,8 +27,9 @@ def get_main_menu_choice(): # renders main CLI menu with quit and captures user 
     print("2. View stored inventory records")
     print("3. Run inventory analysis")
     print("4. View previous procurement recommendations")
-    print("5. Exit")
-    return input("\nSelect an option (1-5): ").strip().lower()
+    print("5. Remove inventory record")
+    print("6. Exit")
+    return input("\nSelect an option (1-6): ").strip().lower()
 
 def _get_input_or_cancel(prompt_text):
     # helper to catch 'q' or 'quit' at any prompt.
@@ -360,3 +361,33 @@ def prompt_record_action(record):
 
         else:
             print("Please enter 1, 2 or 3.")
+
+def prompt_remove_inventory(records):
+    # Returns the index of the record to remove, or None if cancelled.
+    if not records:
+        print("\nNo inventory records found.")
+        return None
+
+    display_inventory_records(records)
+
+    while True:
+        choice = input(
+            "\nEnter the record number to remove (or 'q' to cancel): "
+        ).strip()
+
+        if choice.lower() in ["q", "quit"]:
+            return None
+
+        if not choice.isdigit() or not 1 <= int(choice) <= len(records):
+            print("Invalid record number.")
+            continue
+
+        index = int(choice) - 1
+        name = records[index].get("item_name") or records[index].get("item_id", "this item")
+
+        confirm = input(f"Permanently remove '{name}'? (Y/N): ").strip().upper()
+        if confirm in ["Y", "YES"]:
+            return index
+
+        print("Removal cancelled.")
+        return None
