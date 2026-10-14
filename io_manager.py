@@ -253,6 +253,8 @@ def display_historical_procurement_report(record):
     print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
     print(f"Item ID: {record.get('item_id', 'N/A')}")
     print(f"Date: {record.get('timestamp', 'N/A')}")
+    if record.get("status_updated"):
+        print(f"Status Last Updated: {record['status_updated']}")   
     print(f"Decision: {record.get('approval_status', 'N/A')}")
     print(f"Action: {record.get('action', 'N/A')}")
     print(
