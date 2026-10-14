@@ -96,7 +96,7 @@ def display_inventory_records(records): # displays saved inventory records
         print("    Operational Notes:")
         wrapped_notes = textwrap.fill(
             notes,
-            width=75,
+            width=50,
             initial_indent="    ",
             subsequent_indent="    "
         )
@@ -119,7 +119,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
     wrapped_notes = textwrap.fill(
         inventory.get('operational_notes', 'None provided'),
-        width=75,
+        width=50,
         initial_indent="",
         subsequent_indent=""
     )
@@ -138,7 +138,7 @@ def display_full_procurement_report(inventory, ai_assessment, analysis_result): 
     print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
     wrapped_notes = textwrap.fill(
         ai_assessment.get('reason', 'N/A'),
-        width=75,
+        width=50,
         initial_indent="",
         subsequent_indent=""
     )
