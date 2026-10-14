@@ -1,2 +1,5 @@
+# py -m pip install -r requirements.txt
+
 google-genai
 pytest
+tzdata
