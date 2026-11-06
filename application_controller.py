@@ -276,7 +276,27 @@ class ApplicationController:
             self.io_manager.display_error(str(error))
 
     def update_procurement_status(self, procurement_id, status, rejection_reason=None):
-        pass
+        try:
+            success, error = self.data_manager.update_procurement_status(
+                procurement_id,
+                status,
+                rejection_reason
+            )
+
+            if success:
+                if status == "DEFER":
+                    self.io_manager.display_status_message(
+                        "Procurement decision deferred. It remains pending."
+                    )
+                else:
+                    self.io_manager.display_status_message(
+                        f"Procurement decision updated to {status}."
+                    )
+            else:
+                self.io_manager.display_error(error)
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
 
     def run_procurement_simulation(self):
         pass
