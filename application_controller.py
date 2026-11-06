@@ -1,4 +1,3 @@
-from models import InventoryRecord
 from models import ProcurementDecision
 
 class ApplicationController:
@@ -43,14 +42,12 @@ class ApplicationController:
                 )
 
     def add_inventory_record(self):
-        inventory_data = self.io_manager.prompt_inventory_record()
+        inventory_record = self.io_manager.prompt_inventory_record()
 
-        if inventory_data is None:
+        if inventory_record is None:
             return
 
         try:
-            inventory_record = InventoryRecord.from_dict(inventory_data)
-
             success, error = self.data_manager.add_inventory_record(
                 inventory_record
             )
@@ -62,7 +59,7 @@ class ApplicationController:
             else:
                 self.io_manager.display_error(error)
 
-        except (ValueError, TypeError, KeyError) as error:
+        except Exception as error:
             self.io_manager.display_error(str(error))
 
     def view_inventory_records(self):
