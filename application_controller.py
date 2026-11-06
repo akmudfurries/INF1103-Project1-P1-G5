@@ -188,15 +188,13 @@ class ApplicationController:
 
             self.io_manager.display_previous_recommendations(records)
 
-            self.view_historical_procurement_record()
+            self.view_historical_procurement_record(records)
 
         except Exception as error:
             self.io_manager.display_error(str(error))
 
-    def view_historical_procurement_record(self):
+    def view_historical_procurement_record(self, records):
         try:
-            records = self.data_manager.get_procurement_records()
-
             if not records:
                 self.io_manager.display_status_message(
                     "No procurement records available."
