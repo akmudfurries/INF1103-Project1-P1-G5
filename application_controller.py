@@ -1,3 +1,5 @@
+from models import InventoryRecord
+
 class ApplicationController:
 
     def __init__(self, io_manager, ai_manager, logic_manager, data_manager):
@@ -40,7 +42,27 @@ class ApplicationController:
                 )
 
     def add_inventory_record(self):
-        pass
+        inventory_data = self.io_manager.prompt_inventory_record()
+
+        if inventory_data is None:
+            return
+
+        try:
+            inventory_record = InventoryRecord.from_dict(inventory_data)
+
+            success, error = self.data_manager.add_inventory_record(
+                inventory_record
+            )
+
+            if success:
+                self.io_manager.display_status_message(
+                    "Inventory record added successfully."
+                )
+            else:
+                self.io_manager.display_error(error)
+
+        except (ValueError, TypeError, KeyError) as error:
+            self.io_manager.display_error(str(error))
 
     def view_inventory_records(self):
         pass
