@@ -102,7 +102,81 @@ class ApplicationController:
             self.io_manager.display_error(str(error))
 
     def run_inventory_analysis(self):
-        pass
+        try:
+            records = self.data_manager.get_inventory_records()
+
+            if not records:
+                self.io_manager.display_status_message(
+                    "No inventory records available for analysis."
+                )
+                return
+
+            item_id = self.io_manager.prompt_inventory_selection(records)
+
+            if item_id is None:
+                return
+
+            inventory = self.data_manager.get_inventory_record(item_id)
+
+            if inventory is None:
+                self.io_manager.display_error(
+                    "Inventory record could not be found."
+                )
+                return
+
+            assessment, error = self.ai_manager.assess(inventory)
+
+            if assessment is None:
+                self.io_manager.display_error(error)
+                return
+
+            result = self.logic_manager.analyse_inventory(
+                inventory, assessment
+            )
+
+            self.io_manager.display_full_procurement_report(
+                inventory, assessment, result
+            )
+
+            decision = ProcurementDecision(
+                procurement_id=None,
+                item_id=inventory.item_id,
+                recommended_quantity=result["recommended_quantity"],
+                priority=result["priority"],
+                action=result["action"],
+                approval_status="PENDING",
+                rejection_reason=None,
+                timestamp=None,
+                status_updated=None,
+                inventory_snapshot=inventory.to_dict(),
+                ai_assessment=assessment.to_dict(),
+                analysis_result=result
+            )
+
+            success, error = self.data_manager.create_procurement_record(
+                decision
+            )
+
+            if not success:
+                self.io_manager.display_error(error)
+                return
+
+            self.io_manager.display_status_message(
+                "Procurement recommendation saved."
+            )
+
+            status, rejection_reason = (
+                self.io_manager.prompt_user_approval()
+            )
+
+            self.update_procurement_status(
+                decision.procurement_id,
+                status,
+                rejection_reason
+            )
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
 
     def view_previous_recommendations(self):
         pass
