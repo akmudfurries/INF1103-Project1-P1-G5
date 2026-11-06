@@ -1,4 +1,5 @@
 from models import InventoryRecord
+from models import ProcurementDecision
 
 class ApplicationController:
 
@@ -179,10 +180,100 @@ class ApplicationController:
             self.io_manager.display_error(str(error))
 
     def view_previous_recommendations(self):
-        pass
+        try:
+            records = self.data_manager.get_procurement_records()
+
+            if not records:
+                self.io_manager.display_status_message(
+                    "No previous procurement recommendations available."
+                )
+                return
+
+            self.io_manager.display_previous_recommendations(records)
+
+            self.view_historical_procurement_record()
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
 
     def view_historical_procurement_record(self):
-        pass
+        try:
+            records = self.data_manager.get_procurement_records()
+
+            if not records:
+                self.io_manager.display_status_message(
+                    "No procurement records available."
+                )
+                return
+
+            procurement_id = (
+                self.io_manager.prompt_procurement_selection(records)
+            )
+
+            if procurement_id is None:
+                return
+
+            record = self.data_manager.get_procurement_record(
+                procurement_id
+            )
+
+            if record is None:
+                self.io_manager.display_error(
+                    "Procurement record could not be found."
+                )
+                return
+
+            action, rejection_reason = (
+                self.io_manager.prompt_record_action(record)
+            )
+
+            if action == "VIEW":
+                self.io_manager.display_historical_procurement_report(
+                    record
+                )
+
+                history = self.data_manager.get_procurement_history(
+                    procurement_id
+                )
+
+                self.io_manager.display_procurement_history(history)
+
+            elif action == "APPROVE":
+                self.update_procurement_status(
+                    procurement_id, "APPROVED"
+                )
+
+            elif action == "REJECT":
+                self.update_procurement_status(
+                    procurement_id,
+                    "REJECTED",
+                    rejection_reason
+                )
+
+            elif action == "DELETE":
+                success, error = (
+                    self.data_manager.delete_procurement_record(
+                        procurement_id
+                    )
+                )
+
+                if success:
+                    self.io_manager.display_status_message(
+                        "Procurement record deleted successfully."
+                    )
+                else:
+                    self.io_manager.display_error(error)
+
+            elif action == "BACK":
+                return
+
+            else:
+                self.io_manager.display_error(
+                    "Invalid procurement record action."
+                )
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
 
     def update_procurement_status(self, procurement_id, status, rejection_reason=None):
         pass
