@@ -65,10 +65,41 @@ class ApplicationController:
             self.io_manager.display_error(str(error))
 
     def view_inventory_records(self):
-        pass
+        try:
+            records = self.data_manager.get_inventory_records()
+            self.io_manager.display_inventory_records(records)
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
 
     def remove_inventory_record(self):
-        pass
+        try:
+            records = self.data_manager.get_inventory_records()
+
+            if not records:
+                self.io_manager.display_status_message(
+                    "No inventory records available."
+                )
+                return
+
+            item_id = self.io_manager.prompt_inventory_removal(records)
+
+            if item_id is None:
+                return
+
+            success, error = self.data_manager.remove_inventory_record(
+                item_id
+            )
+
+            if success:
+                self.io_manager.display_status_message(
+                    "Inventory record removed successfully."
+                )
+            else:
+                self.io_manager.display_error(error)
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
 
     def run_inventory_analysis(self):
         pass
