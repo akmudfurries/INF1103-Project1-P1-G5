@@ -1,78 +1,64 @@
-def validate_positive_number(value_str, allow_float=False):
-    # validates that the input string represents a non negative number 
-    try:
-        num = float(value_str) if allow_float else int(value_str)
-        if num < 0:
-            return False, "Value cannot be negative."
-        return True, num
-    except ValueError:
-        expected_type = "a decimal number" if allow_float else "a whole number"
-        return False, f"Invalid input. Please enter {expected_type}."
+class ApplicationController:
 
-def validate_single_field(field_label, value_str):
-    # validates an individual input field immediately as it is entered.
-    value_str = value_str.strip()
-    
-    if field_label == "item_id":
-        if not value_str:
-            return False, "Item Name / ID cannot be empty."
-        return True, value_str
-        
-    elif field_label == "category":
-        if not value_str:
-            return False, "Category cannot be empty."
-        return True, value_str
-        
-    elif field_label == "operational_notes":
-        if not value_str:
-            return False, "Operational notes cannot be empty."
-        return True, value_str
-        
-    elif field_label in ["Current Stock", "Supplier Lead Time", "Minimum Order Quantity"]:
-        is_valid, res = validate_positive_number(value_str, allow_float=False)
-        return is_valid, res if not is_valid else ""
-        
-    elif field_label in ["Average Weekly Usage", "Unit Cost", "Available Budget"]:
-        is_valid, res = validate_positive_number(value_str, allow_float=True)
-        return is_valid, res if not is_valid else ""
-    
-    return True, ""
+    def __init__(self, io_manager, ai_manager, logic_manager, data_manager):
+        self.io_manager = io_manager
+        self.ai_manager = ai_manager
+        self.logic_manager = logic_manager
+        self.data_manager = data_manager
 
+    def run(self):
+        self.io_manager.print_header()
 
-def validate_inventory_fields(item, category, stock, usage, lead_time, moq, cost, budget, notes):
-    # validates all form fields collected from user CLI prompt n gather error msg into a list
+        while True:
+            choice = self.io_manager.get_main_menu_choice()
 
-    errors = []
+            if choice == "1":
+                self.add_inventory_record()
 
-    # text field check
-    if not item.strip():
-        errors.append("Item name is required.")
-    if not category.strip():
-        errors.append("Category is required.")
-    if not notes.strip():
-        errors.append("Operational notes are required.")
+            elif choice == "2":
+                self.view_inventory_records()
 
-    # Numeric field checks
-    numeric_checks = [
-        ("Current Stock", stock, False),
-        ("Average Weekly Usage", usage, False),
-        ("Supplier Lead Time", lead_time, False),
-        ("Minimum Order Quantity", moq, False),
-        ("Unit Cost", cost, True),
-        ("Available Budget", budget, True),
-    ]
+            elif choice == "3":
+                self.run_inventory_analysis()
 
-    parsed_values = {}
-    for label, val_str, is_float in numeric_checks:
-        is_valid, result = validate_positive_number(val_str, allow_float=is_float)
-        if not is_valid:
-            errors.append(f"{label}: {result}")
-        else:
-            parsed_values[label] = result
+            elif choice == "4":
+                self.view_previous_recommendations()
 
-    if errors:
-        return False, errors, None
+            elif choice == "5":
+                self.remove_inventory_record()
 
-    return True, [], parsed_values
+            elif choice == "6":
+                self.run_procurement_simulation()
 
+            elif choice in ["7", "q", "quit"]:
+                self.io_manager.display_status_message("Exiting application.")
+                break
 
+            else:
+                self.io_manager.display_error(
+                    "Invalid choice. Please select an available menu option."
+                )
+
+    def add_inventory_record(self):
+        pass
+
+    def view_inventory_records(self):
+        pass
+
+    def remove_inventory_record(self):
+        pass
+
+    def run_inventory_analysis(self):
+        pass
+
+    def view_previous_recommendations(self):
+        pass
+
+    def view_historical_procurement_record(self):
+        pass
+
+    def update_procurement_status(self, procurement_id, status, rejection_reason=None):
+        pass
+
+    def run_procurement_simulation(self):
+        pass
