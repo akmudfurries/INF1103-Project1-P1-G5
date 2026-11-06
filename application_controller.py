@@ -299,4 +299,56 @@ class ApplicationController:
             self.io_manager.display_error(str(error))
 
     def run_procurement_simulation(self):
-        pass
+        try:
+            records = self.data_manager.get_inventory_records()
+
+            if not records:
+                self.io_manager.display_status_message(
+                    "No inventory records available for simulation."
+                )
+                return
+
+            item_id = self.io_manager.prompt_inventory_selection(records)
+
+            if item_id is None:
+                return
+
+            inventory = self.data_manager.get_inventory_record(item_id)
+
+            if inventory is None:
+                self.io_manager.display_error(
+                    "Inventory record could not be found."
+                )
+                return
+
+            assessment, error = self.ai_manager.assess(inventory)
+
+            if assessment is None:
+                self.io_manager.display_error(error)
+                return
+
+            current_result = self.logic_manager.analyse_inventory(
+                inventory, assessment
+            )
+
+            parameters = self.io_manager.prompt_simulation_parameters()
+
+            if parameters is None:
+                return
+
+            simulated_usage, simulated_lead_time = parameters
+
+            simulated_result = self.logic_manager.simulate_procurement(
+                inventory,
+                assessment,
+                simulated_usage,
+                simulated_lead_time
+            )
+
+            self.io_manager.display_simulation_comparison(
+                current_result,
+                simulated_result
+            )
+
+        except Exception as error:
+            self.io_manager.display_error(str(error))
