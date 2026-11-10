@@ -1,706 +1,387 @@
-# =====================================================================
-# Install pytest: python -m pip install pytest
-# Test CMD: pytest -v
+from data_manager import DataManager
 
-import pytest
+class FakeRepository:
+    def __init__(self):
+        self.inventory_records = []
+        self.procurement_records = []
+        self.procurement_history = []
 
-from data_manager import build_inventory_record
-from data_manager import validate_inventory_record
-from data_manager import build_procurement_record
-from data_manager import validate_procurement_record
+    def fetch_inventory(self, item_id):
+        for record in self.inventory_records:
+            if record["item_id"] == item_id:
+                return record
 
-from data_manager import find_record_by_id
-from data_manager import add_record
-from data_manager import update_record
-from data_manager import link_procurement_to_item
-from data_manager import get_records_for_item
-from data_manager import create_procurement_from_business_rule
-from data_manager import update_procurement_record
-from data_manager import get_procurement_record_by_number
+        return None
 
-from file_manager import save_records, load_records
+    def fetch_all_inventory(self):
+        return self.inventory_records
 
-# =====================================================================
-# Inventory Record Tests
-# =====================================================================
+    def insert_inventory(self, record):
+        self.inventory_records.append(record)
+        return True, None
 
-def test_build_valid_inventory_record():
-    record = build_inventory_record(
+    def delete_inventory(self, item_id):
+        record = self.fetch_inventory(item_id)
+
+        if record is None:
+            return False, f"Inventory record not found: {item_id}"
+
+        self.inventory_records.remove(record)
+        return True, None
+
+    def fetch_procurement(self, procurement_id):
+        for record in self.procurement_records:
+            if record["procurement_id"] == procurement_id:
+                return record
+
+        return None
+
+    def fetch_all_procurement(self):
+        return self.procurement_records
+
+    def insert_procurement(self, record):
+        self.procurement_records.append(record)
+        return True, None
+
+    def update_procurement_status(
+            self, 
+            procurement_id,
+            status,
+            rejection_reason = None,
+            status_updated = None
+    ):
+        record = self.fetch_procurement(procurement_id)
+
+        if record is None:
+            return False, f"Procurement record not found: {procurement_id}"
+
+        previous_status =  record["approval_status"]
+
+        record["approval_status"] = status
+        record["rejection_reason"] = rejection_reason
+        record["status_updated"] = status_updated
+
+        self.procurement_history.append({
+            "procurement_id": procurement_id,
+            "previous_status": previous_status,
+            "new_status": status,
+            "reason": rejection_reason,
+            "changed_at": status_updated
+        })
+
+        return True, None
+
+    def delete_procurement(self, procurement_id):
+        record = self.fetch_procurement(procurement_id)
+
+        if record is None:
+            return False, f"Procurement record not found: {procurement_id}"
+
+        self.procurement_records.remove(record)
+        return True, None
+
+    def fetch_procurement_history(self, procurement_id):
+        return[
+            record
+            for record in self.procurement_history
+            if record["procurement_id"] == procurement_id
+        ]
+
+class FakeInventoryRecord:
+    def __init__(self, item_id, item_name):
+        self.item_id = item_id
+        self.item_name = item_name
+
+    def to_dict(self):
+        return {
+            "item_id": self.item_id,
+            "item_name": self.item_name
+        }
+
+def test_add_inventory_record():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    record = FakeInventoryRecord(
         "INV001",
-        "Industrial Printer Ribbon",
-        42,
-        15,
-        2,
-        "Demand increased recently."
+        "Pressure Sensor"
     )
 
-    assert record["item_id"] == "INV001"
-    assert record["current_stock"] == 42
-    assert record["weekly_usage"] == 15
-    assert record["lead_time_weeks"] == 2
+    success, error = data_manager.add_inventory_record(record)
 
+    assert success is True
+    assert error is None
+    assert len(repository.inventory_records) == 1
+    assert repository.inventory_records[0]["item_id"] == "INV001"
 
-def test_missing_required_field():
-    record = {
-        "item_id": "INV001",
-        "item_name": "Industrial Printer Ribbon",
-        "current_stock": 42
-    }
+def  test_add_duplicate_inventory_record():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
 
-    try:
-        validate_inventory_record(record)
-        assert False, "Expected ValueError for missing required field"
-    except ValueError:
-        pass
-
-
-def test_negative_stock():
-    try:
-        build_inventory_record(
-            "INV001",
-            "Industrial Printer Ribbon",
-            -1,
-            15,
-            2,
-            "Demand increased recently."
-        )
-        assert False, "Expected ValueError for negative stock"
-    except ValueError:
-        pass
-
-
-def test_invalid_item_id():
-    try:
-        build_inventory_record(
-            "",
-            "Industrial Printer Ribbon",
-            42,
-            15,
-            2,
-            "Demand increased recently."
-        )
-        assert False, "Expected ValueError for invalid item ID"
-    except ValueError:
-        pass
-
-
-# =====================================================================
-# Procurement Record Tests
-# =====================================================================
-
-def test_build_valid_procurement_record():
-    record = build_procurement_record(
-        "INV001",
-        50,
-        "HIGH",
-        "REORDER",
-        "PENDING"
+    first_record = FakeInventoryRecord(
+        "INVOO1",
+        "Pressure Sensor"
     )
 
-    assert record["item_id"] == "INV001"
-    assert record["recommended_quantity"] == 50
-    assert record["priority"] == "HIGH"
-    assert record["action"] == "REORDER"
-    assert record["approval_status"] == "PENDING"
+    duplicate_record = FakeInventoryRecord(
+        "INV001",
+        "Another Sensor"
+    )
 
+    data_manager.add_inventory_record(first_record)
 
-def test_missing_procurement_field():
-    record = {
-        "item_id": "INV001",
-        "recommended_quantity": 50,
-        "priority": "HIGH",
-        "approval_status": "PENDING"
-    }
+    success, error = data_manager.add_inventory_record(duplicate_record)
 
-    try:
-        validate_procurement_record(record)
-        assert False, "Expected ValueError for missing procurement field"
-    except ValueError:
-        pass
+    assert success is False
+    assert error == "Duplicate ID: INV001"
+    assert len(repository.inventory_records) == 1
 
-def test_update_procurement_record_rejected_with_reason():
-    records = [
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
+def test_get_inventory_records():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    repository.inventory_records = [
+        {
+            "item_id": "INV001",
+            "item_name": "Pressure Sensor",
+            "current_stock": 10,
+            "weekly_usage": 5,
+            "lead_time_weeks": 2,
+            "operational_notes": "Critical equipment"
+        },
+        {
+            "item_id": "INV002",
+            "item_name": "Printer Ribbonr",
+            "current_stock": 20,
+            "weekly_usage": 4,
+            "lead_time_weeks": 1,
+            "operational_notes": "Normal usage"
+        }
     ]
 
-    procurement_id = records[0]["procurement_id"]
+    records = data_manager.get_inventory_record()
 
-    updates = {
-        "approval_status": "REJECTED",
-        "rejection_reason": "Budget exceeded"
-    }
+    assert len(records) == 2
+    assert records[0].item_id == "INV001"
+    assert records[1].item_id == "INV002"
 
-    success, error = update_procurement_record(
-        records,
-        procurement_id,
-        updates
+def test_get_inventory_record():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+    
+    repository.inventory_records = [
+        {
+            "item_id": "INV001",
+            "item_name": "Pressure Sensor",
+            "current_stock": 10,
+            "weekly_usage": 5,
+            "lead_time_weeks": 2,
+            "operational_notes": "Critical equipment"
+        }
+    ]
+
+    record = data_manager.get_inventory_record("INV001")
+
+    assert record is not None
+    assert record.item_id == "INV001"
+    assert record.item_name == "Pressure Sensor"
+
+def test_remove_inventory_record():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    repository.inventory_records = [
+        {
+            "item_id": "INV001",
+            "item_name": "Pressure Sensor",
+            "current_stock": 10,
+            "weekly_usage": 5,
+            "lead_time_weeks": 2,
+            "operational_notes": "Critical equipment"
+        }
+    ]
+
+    success, error = data_manager.remove_inventory_record("INV001")
+
+    assert success is True
+    assert error is None
+    assert len(repository.inventory_records) == 0
+
+class FakeProcurementDecision:
+    def _init_(self, item_id, recommended_quantity, priority, action):
+        self.procurement_id = None
+        self.item_id = item_id
+        self.recommended_quantity = recommended_quantity
+        self.priority = priority
+        self.action = action
+        self.approval_status = None
+        self.rejection_reason = None
+        self.timestamp = None
+        self.status_updated = None
+
+    def to_dict(self):
+        return {
+            "procurement_id": self.procurement_id,
+            "item_id": self.item_id,
+            "recommended_quantity": self.recommended_quantity,
+            "priority": self.priority,
+            "action": self.action,
+            "approval_status": self.approval_status,
+            "rejection_reason": self.rejection_reason,
+            "timestamp": self.timestamp,
+            "status_updated": self.status_updated
+        }
+def test_create_procurement_record():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    decision = FakeProcurementDecision(
+        "INV001",
+        20,
+        "HIGH",
+        "ORDER"
+    )
+
+    success, error = data_manager.create_procurement_record(decision)
+
+    assert success is True
+    assert error is None
+    assert len(repository.procurement_records) == 1
+
+    saved_record = repository.procurement_records[0]
+
+    assert saved_record["procurement_id"].startswith("PROC-")
+    assert saved_record["item_id"] == "INV001"
+    assert saved_record["approval_status"] == "PENDING"
+    assert saved_record["timestamp"] is not None
+
+def test_update_procurement_status():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    repository.procurement_records = [
+        {
+            "procurement_id": "PROC-12345678",
+            "item_id": "INV001",
+            "recommended_quantity": 20,
+            "priority": "HIGH",
+            "action": "ORDER",
+            "approval_status": "PENDING",
+            "rejection_reason": None,
+            "timestamp": "2026-11-10T10:00:00",
+            "status_updated": None
+        }
+    ]
+
+    success, error = data_manager.update_procurement_status(
+        "PROC-12345678",
+        "APPROVED"
     )
 
     assert success is True
     assert error is None
-    assert records[0]["approval_status"] == "REJECTED"
-    assert records[0]["rejection_reason"] == "Budget exceeded"
 
-def test_update_procurement_record_rejected_wihtout_reason():
-    records = [
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
+    record = repository.procurement_records[0]
+
+    assert record["approval_status"] == "APPROVED"
+    assert record["status_updated"] is not None
+
+def test_reject_procurement_with_reason():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    repository.procurement_records = [
+        {
+            "procurement_id": "PROC-12345678",
+            "item_id": "INV001",
+            "recommended_quantity": 20,
+            "priority": "HIGH",
+            "action": "ORDER",
+            "approval_status": "PENDING",
+            "rejection_reason": None,
+            "timestamp": "2026-11-10T10:00:00",
+            "status_updated": None          
+        }
     ]
 
-    procurement_id = records[0]["procurement_id"]
-
-    updates = {
-        "approval_status":"REJECTED"
-    }
-
-    success, error = update_procurement_record(
-        records, 
-        procurement_id,
-        updates
+    success, error = data_manager.update_procurement_status(
+        "PROC-12345678",
+        "REJECTED",
+        "Budget exceeded"
     )
 
-    assert success is False
-    assert records[0]["approval_status"] == "PENDING"
-    assert records[0]["rejection_reason"] is None
+    assert success is True
+    assert error is None
 
-
-
-
-def test_negative_recommended_quantity():
-    try:
-        build_procurement_record(
-            "INV001",
-            -10,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
-        assert False, "Expected ValueError for negative quantity"
-    except ValueError:
-        pass
-
-
-def test_invalid_procurement_item_id():
-    try:
-        build_procurement_record(
-            "",
-            50,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
-        assert False, "Expected ValueError for invalid item ID"
-    except ValueError:
-        pass
-
-
-def test_invalid_priority():
-    try:
-        build_procurement_record(
-            "INV001",
-            50,
-            "",
-            "REORDER",
-            "PENDING"
-        )
-        assert False, "Expected ValueError for invalid priority"
-    except ValueError:
-        pass
-
-
-def test_invalid_action():
-    try:
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "",
-            "PENDING"
-        )
-        assert False, "Expected ValueError for invalid action"
-    except ValueError:
-        pass
-
-def test_invalid_approval_status():
-    with pytest.raises(ValueError, match="approval_status"):
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "MAYBE"
-        )
-
-
-def test_approval_status_values():
-    for status in ["PENDING", "APPROVED"]:
-        record = build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            status
-        )
-
-        assert record["approval_status"] == status
-
-    record = build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "REJECTED",
-            "Budget exceeded"
-    )
+    record = repository.procurement_records[0]
 
     assert record["approval_status"] == "REJECTED"
     assert record["rejection_reason"] == "Budget exceeded"
 
-def test_extended_procurement_persistance(tmp_path):
-    records = [
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
-    ]
+def test_reject_procurement_with_reason():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
 
-    procurement_id = records[0]["procurement_id"]
-
-    extended_updates = {
-        "estimated_cost": 600.00,
-        "budget_escalation": True
-    }
-
-    success, error = update_procurement_record(
-        records,
-        procurement_id,
-        extended_updates
+    success, error = data_manager.update_procurement_status(
+        "PROC-12345678",
+        "REJECTED"
     )
 
-    assert success is True
-    assert error is None
-
-    file_path =  str(tmp_path / "extended_procurement.json")
-
-    save_records(file_path, records)
-
-    loaded_records = load_records(file_path)
-
-    assert len(loaded_records) == 1
-    assert loaded_records[0]["item_id"] == "INV001"
-    assert loaded_records[0]["estimated_cost"] == 600.00
-    assert loaded_records[0]["budget_escalation"] is True
-    assert "timestamp" in loaded_records[0]
-    assert loaded_records[0]["timestamp"] != ""
-
-# =====================================================================
-# Record Management Tests
-# =====================================================================
-
-def test_find_existing_record():
-    records = [
-        {"item_id": "INV001", "item_name": "Printer Ribbon"},
-        {"item_id": "INV002", "item_name": "Printer Paper"}
-    ]
-
-    result = find_record_by_id(records, "INV002", "item_id")
-
-    assert result["item_name"] == "Printer Paper"
-
-
-def test_find_missing_record():
-    records = [
-        {"item_id": "INV001", "item_name": "Printer Ribbon"},
-        {"item_id": "INV002", "item_name": "Printer Paper"}
-    ]
-
-    result = find_record_by_id(records, "INV999", "item_id")
-
-    assert result is None
-
-
-def test_add_new_record():
-    records = [
-        {"item_id": "INV1001", "item_name": "Printer Ribbon"}
-    ]
-
-    new_record = {
-        "item_id": "INV002",
-        "item_name": "Printer Paper"
-    }
-
-    success, error = add_record(records, new_record, "item_id")
-
-    assert success is True
-    assert error is None
-    assert len(records) == 2
-    assert records[1]["item_id"] == "INV002"
-
-
-def test_add_duplicate_record():
-    records = [
-        {"item_id": "INV001", "item_name": "Printer Ribbon"}
-    ]
-
-    duplicate_record = {
-        "item_id": "INV001",
-        "item_name": "Printer Paper"
-    }
-
-    success, error = add_record(records, duplicate_record, "item_id")
-
     assert success is False
-    assert error == "Duplicate ID: INV001"
-    assert len(records) == 1
+    assert error == "Rejection reason is required."
 
-
-def test_add_missing_id():
-    records = [
-        {"item_id": "INV001", "item_name": "Printer Ribbon"}
-    ]
-
-    missing_id_record = {
-        "item_name": "Printer Paper"
-    }
-
-    success, error = add_record(records, missing_id_record, "item_id")
-
-    assert success is False
-    assert error == "Record is missing its ID."
-    assert len(records) == 1
-
-def test_update_existing_record():
-    records = [
+def test_delete_procurement_record():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+    
+    repository.procurement_records = [
         {
+            "procurement_id": "PROC-12345678",
             "item_id": "INV001",
-            "item_name": "Printer Ribbon",
-            "current_stock": 42
+            "recommended_quantity": 20,
+            "priority": "HIGH",
+            "action": "ORDER",
+            "approval_status": "PENDING",
+            "rejection_reason": None,
+            "timestamp": "2026-11-10T10:00:00",
+            "status_updated": None          
         }
     ]
 
-    updates = {
-        "current_stock": 30
-    }
-
-    success, error = update_record(records, "INV001", updates, "item_id")
+    success, error = data_manager.delete_procurement_record(
+        "PROC-12345678"
+    )
 
     assert success is True
     assert error is None
-    assert records[0]["current_stock"] == 30
+    assert len(repository.procurement_records) == 0
 
-def test_update_missing_record():
-    records = [
+def test_get_procurement_history():
+    repository = FakeRepository()
+    data_manager = DataManager(repository)
+
+    repository.procurement_history = [
         {
-            "item_id": "INV001",
-            "item_name": "Printer Ribbon",
-            "current_stock": 42
+            "procurement_id": "PROC-12345678",
+            "previous_status": "PENDING",
+            "new_status": "APPROVED",
+            "reason": None,
+            "changed_at": "2026-11-10T11:00:00"
+        },
+        {
+            "procurement_id": "PROC-999999999",
+            "previous_status": "PENDING",
+            "new_status": "REJECTED",
+            "reason": "Too expensive",
+            "changed_at": "2026-11-10T12:00:00"
         }
     ]
 
-    updates = {
-        "current_stock": 30
-    }
-
-    success, error = update_record(records, "INV999", updates, "item_id")
-
-    assert success is False
-    assert error == "Record not found: INV999"
-    assert records[0]["current_stock"] == 42
-
-def test_update_record_id():
-    records = [
-        {
-            "item_id": "INV001",
-            "item_name": "Printer Ribbon",
-            "current_stock": 42
-        }
-    ]
-
-    updates = {
-        "item_id": "INV999"
-    }
-
-    success, error = update_record(records, "INV001", updates, "item_id")
-
-    assert success is False
-    assert error == "Record ID cannot be changed."
-    assert records[0]["item_id"] == "INV001"
-
-# =====================================================================
-# Procurement Tests
-# =====================================================================
-
-def test_link_procurement_to_existing_item():
-    inventory_records = [
-        {"item_id": "INV001", "item_name": "Printer Ribbon"}
-    ]
-
-    procurement_record = {
-        "procurement_id": "PRC001",
-        "item_id": "INV001",
-        "recommended_quantity": 50
-    }
-
-    success, error = link_procurement_to_item(
-        procurement_record,
-        inventory_records
+    history = data_manager.get_procurement_history(
+        "PROC-12345678"
     )
 
-    assert success is True
-    assert error is None
-
-def test_link_procurement_to_missing_item():
-    inventory_records = [
-        {"item_id": "INV001", "item_name": "Printer Ribbon"}
-    ]
-
-    procurement_record = {
-        "procurement_id": "PRC002",
-        "item_id": "INV999",
-        "recommended_quantity": 20
-    }
-
-    success, error = link_procurement_to_item(
-        procurement_record,
-        inventory_records
-    )
-
-    assert success is False
-    assert error == "Inventory item not found: INV999"
-
-def test_get_records_for_existing_item():
-    records = [
-        {"procurement_id": "PRC001", "item_id": "INV001"},
-        {"procurement_id": "PRC002", "item_id": "INV002"},
-        {"procurement_id": "PRC003", "item_id": "INV001"}
-    ]
-
-    result = get_records_for_item(records, "INV001")
-
-    assert len(result) == 2
-    assert result[0]["procurement_id"] == "PRC001"
-    assert result[1]["procurement_id"] == "PRC003"
-
-
-def test_get_records_for_missing_item():
-    records = [
-        {"procurement_id": "PRC001", "item_id": "INV001"}
-    ]
-
-    result = get_records_for_item(records, "INV999")
-
-    assert result == []
-
-def test_create_procurement_from_business_rule():
-    business_rule_output = {
-        "recommended_quantity": 50,
-        "priority": "HIGH",
-        "action": "REORDER"
-    }
-
-    record = create_procurement_from_business_rule(
-        "INV001",
-        business_rule_output,
-        "PENDING"
-    )
-
-    assert record["item_id"] == "INV001"
-    assert record["recommended_quantity"] == 50
-    assert record["priority"] == "HIGH"
-    assert record["action"] == "REORDER"
-    assert record["approval_status"] == "PENDING"
-
-def test_inventory_record_persistence(tmp_path):
-    record = build_inventory_record(
-        "INV001",
-        "Industrial Printer Ribbon",
-        42,
-        15,
-        2, 
-        "Demand increased recently."
-    )
-
-    file_path = str(tmp_path / "inventory.json")
-
-    save_records(file_path, [record])
-
-    loaded_records = load_records(file_path)
-
-    assert len(loaded_records) == 1
-    assert loaded_records[0] == record
-
-def test_store_approval_status_and_procurement_decision(tmp_path):
-    records = [
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
-    ]
-
-    updates = {
-        "approval_status": "APPROVED"
-    }
-
-    success, error = update_record(
-        records,
-        "INV001",
-        updates,
-        "item_id"
-    )
-
-    assert success is True
-    assert error is None
-    assert records[0]["approval_status"] == "APPROVED"
-
-    file_path = str(tmp_path / "procurement.json")
-
-    save_records(file_path, records)
-
-    loaded_records = load_records(file_path)
-
-    assert loaded_records[0]["approval_status"] == "APPROVED"
-    assert loaded_records[0]["recommended_quantity"] == 50
-    assert loaded_records[0]["action"] == "REORDER"
-
-def test_manage_extended_inventory_data():
-    records = []
-
-    extended_record = {
-        "item_id": "INV001",
-        "item_name": "Industrial Printer Ribbon",
-        "current_stock": 42,
-        "weekly_usage": 15,
-        "lead_time_weeks": 2,
-        "operational_notes": "Demand increased recently",
-        "safety_stock": 15,
-        "moq": 50,
-        "unit_cost": 12.00,
-        "budget": 500.00,
-        "stock_coverage": 2.8,
-        "reorder_point": 45
-    }
-
-    success, error = add_record(
-        records, 
-        extended_record,
-        "item_id"
-    )
-
-    assert success is True
-    assert error is None
-
-    updates = {
-        "moq": 60,
-        "budget": 600.00,
-        "safety_stock": 20
-    }
-
-    success, error = update_record(
-        records,
-        "INV001",
-        updates,
-        "item_id"
-    )
-
-    assert success is True
-    assert error is None
-
-    record = find_record_by_id(
-        records,
-        "INV001",
-        "item_id"
-    )
-
-    assert record["moq"] == 60
-    assert record["budget"] == 600.00
-    assert record["safety_stock"] == 20
-    assert record["unit_cost"] == 12.00
-    assert record["stock_coverage"] == 2.8
-    assert record["reorder_point"] == 45
-
-def test_manage_extended_procurement_data():
-    records = [
-        build_procurement_record(
-            "INV001",
-            50,
-            "HIGH",
-            "REORDER",
-            "PENDING"
-        )
-    ]
-
-    procurement_id = records[0]["procurement_id"]
-
-    extended_updates = {
-        "estimated_cost": 600.00,
-        "budget_escalation": True
-    }
-
-    success, error= update_procurement_record(
-        records,
-        procurement_id,
-        extended_updates
-    )
-
-    assert success is True
-    assert error is None
-
-    record = find_record_by_id(
-        records,
-        "INV001",
-        "item_id"
-    )
-
-    assert record["estimated_cost"] == 600.00
-    assert record["budget_escalation"] is True
-
-def test_procurement_timestamp_created():
-    record = build_procurement_record(
-        "INV001",
-        50,
-        "HIGH",
-        "REORDER",
-        "PENDING"
-    )
-
-    assert "timestamp" in record
-    assert isinstance(record["timestamp"], str)
-    assert record["timestamp"] != ""
-
-def test_get_procurement_record_by_number():
-    records = [
-        {"item_id": "INV001"},
-        {"item_id": "INV002"},
-        {"item_id": "INV003"}
-    ]
-
-    result = get_procurement_record_by_number(records, 2)
-
-    assert result["item_id"] == "INV002"
-
-def test_get_procurement_record_by_invalid_number():
-    records = [
-        {"item_id": "INV001"}
-    ]
-
-    result = get_procurement_record_by_number(records, 5)
-
-    assert result is None
-
+    assert len(history) == 1
+    assert history[0]["procurement_id"] == "PROC-12345678"
+    assert history[0]["previous_status"] == "PENDING"
+    assert history[0]["new_status"] == "APPROVED"
