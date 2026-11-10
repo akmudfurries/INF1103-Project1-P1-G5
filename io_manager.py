@@ -137,25 +137,35 @@ class IOManager:
             print("Invalid record number.")
             return None
         selected = records[int(choice) - 1]
-        return getattr(selected, "item_id", None) or (selected.get("item_id") 
+        return getattr(selected, "item_id", None) or (selected.get("item_id")) 
 
     def prompt_inventory_removal(self, records): # prompts user to select an inventory record for removal
         if not records:
             print("\nNo inventory records found.")
             return None
+        
         self.display_inventory_records(records)
-        choice = input("\nEnter the record number to remove (or 'q' to cancel): ").strip()
-        if choice.lower() in ["q", "quit"]:
+
+        while True:
+            choice = input("\nEnter the record number to remove (or 'q' to cancel): ").strip()
+            if choice.lower() in ["q", "quit"]:
+                print("\n[!] Removal cancelled by user.")
+                return None
+            if not choice.isdigit() or not 1 <= int(choice) <= len(records):
+                print("Invalid record number. Please try again")
+                continue
+
+            index = int(choice) - 1
+            selected = records[int(choice) - 1]
+
+            # support both domain objects and dictionaries representations safely
+            name = getattr(selected, "item_name", None) or (selected.get("item_name") if isinstance(selected, dict) else selected.get("item_id", "this item"))
+            item_id = getattr(selected, "item_id", None) or (selected.get("item_id") if isinstance(selected, dict) else None)
+            confirm = input(f"Permanently remove '{name}'? (Y/N): ").strip().upper()
+            if confirm in ["Y", "YES"]:
+                return item_id
+            print("Removal cancelled. Returning to list...")
             return None
-        if not choice.isdigit() or not 1 <= int(choice) <= len(records):
-            print("Invalid record number.")
-            return None
-        selected = records[int(choice) - 1]
-        name = getattr(selected, "item_name", None) or (selected.get("item_name") if isinstance(selected, dict) else selected.get("item_id"))
-        confirm = input(f"Permanently remove '{name}'? (Y/N): ").strip().upper()
-        if confirm in ["Y", "YES"]:
-            return getattr(selected, "item_id", None) or selected.get("item_id")
-        return None
 
     def display_full_procurement_report(self, inventory, ai_assessment, analysis_result): # renders complete analysis output and metrics
         print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
@@ -188,257 +198,216 @@ class IOManager:
         coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
         print(f"Stock Coverage:     {coverage_str}")
 
-    # ai assessment (ref to ai_manager.py  / business_rules.py)
-    print_section_heading("AI Assessment")
-    print(f"Demand Level:           {ai_assessment.get('demand_level', 'N/A').upper()}")
-    print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
-    print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
-    print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
-    wrapped_notes = textwrap.fill(
-        ai_assessment.get('reason', 'N/A'),
-        width=50,
-        initial_indent="",
-        subsequent_indent=""
-    )
-    print(f"Reason: \n{wrapped_notes}")
-    
-    # procurement analysis calculations (ref to business_rules.py)
-    print_section_heading("Procurement Analysis")
-    print(f"Recommended Order:  {analysis_result.get('recommended_quantity', 0)} units")
-
-    # Extended metrics conditional filter
-    if "reorder_point" in analysis_result:
-        print(f"Reorder Point:      {analysis_result['reorder_point']} units")
-
-    if "safety_stock" in analysis_result:
-        print(f"Safety Stock:       {analysis_result['safety_stock']} units")
-
-    if "estimated_cost" in analysis_result:
-        print(f"Estimated Cost:     ${analysis_result['estimated_cost']:.2f}")
-
-    if "budget" in analysis_result:
-        print(f"Available Budget:   ${analysis_result['budget']:.2f}")
-
-    # decision output and priority
-    print_section_heading("Final Decision")
-    print(f"Priority:           {analysis_result.get('priority', 'NORMAL')}")
-    print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
-
-    if "budget_escalation" in analysis_result:
-        escalation = "REQUIRED" if analysis_result.get('budget_escalation') else "NOT REQUIRED"
-        print(f"Budget Escalation:  {escalation}")
-    
-
-    print(config.BANNER_CHAR * config.LINE_WIDTH)
-
-def prompt_user_approval(): # prompts user to approve or reject the generated procurement decision or quit
-    while True:
-        choice = input("\nDo you APPROVE this recommendation? (Y/N/Quit): ").strip().upper()
-        if choice in ['Y', 'YES']:
-            print("\n[STATUS] Procurement recommendation APPROVED.")
-            return "APPROVED", ""
-        elif choice in ['N', 'NO']:
-            while True:
-                reason = input(
-                    "Enter reason for rejection/overriding decision: "
-                ).strip()
-
-                if reason:
-                    print(
-                        f"\n[STATUS] Procurement recommendation REJECTED. "
-                        f"(Reason: {reason})"
-                    )
-                    return "REJECTED", reason
-
-                print("[ERROR] A rejection reason is required.")
-
-        elif choice in ['Q', 'QUIT']:
-            print("\n[STATUS] Decision deferred. Marked as PENDING.")
-            return "PENDING", ""
-        else:
-            print("Invalid response. Please enter 'Y' for Yes, 'N' for No, or 'Q' to Quit.")
-
-def display_previous_recommendations(history):
-    print_section_heading("PREVIOUS PROCUREMENT ASSESSMENTS")
-
-    if not history:
-        print("No previous procurement assessments found.")
-        return None
-
-    for idx, record in enumerate(history, start=1):
-        item_id = record.get("item_id", "Unknown")
-        action = record.get("action", "N/A")
-        status = record.get("approval_status", "N/A")
-        timestamp = format_timestamp(record.get("timestamp"))
-
-        print(
-            f"[{idx}] Item: {item_id} | "
-            f"Action: {action} | Status: {status} | "
-            f"Date: {timestamp}"
+        # ai assessment (ref to ai_manager.py  / business_rules.py)
+        self.print_section_heading("AI Assessment")
+        print(f"Demand Level:           {ai_assessment.get('demand_level', 'N/A').upper()}")
+        print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
+        print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
+        print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
+        wrapped_reason = textwrap.fill(
+            ai_assessment.get('reason', 'N/A'),
+            width=50,
+            initial_indent="",
+            subsequent_indent=""
         )
+        print(f"Reason: \n{wrapped_reason}")
+    
+        # procurement analysis calculations (ref to business_rules.py)
+        self.print_section_heading("Procurement Analysis")
+        print(f"Recommended Order:  {analysis_result.get('recommended_quantity', 0)} units")
 
-    while True:
-        choice = input(
-            "\nEnter assessment number to view details, "
-            "or 'q' to return: "
-        ).strip()
+        # Extended metrics conditional filter
+        if "reorder_point" in analysis_result:
+            print(f"Reorder Point:      {analysis_result['reorder_point']} units")
 
-        if choice.lower() in ["q", "quit"]:
+        if "safety_stock" in analysis_result:
+            print(f"Safety Stock:       {analysis_result['safety_stock']} units")
+
+        if "estimated_cost" in analysis_result:
+            print(f"Estimated Cost:     ${analysis_result['estimated_cost']:.2f}")
+
+        if "budget" in analysis_result:
+            print(f"Available Budget:   ${analysis_result['budget']:.2f}")
+
+        # decision output and priority
+        self.print_section_heading("Final Decision")
+        print(f"Priority:           {analysis_result.get('priority', 'NORMAL')}")
+        print(f"Action:             {analysis_result.get('action', 'NO ACTION')}")
+
+        if "budget_escalation" in analysis_result:
+            escalation = "REQUIRED" if analysis_result.get('budget_escalation') else "NOT REQUIRED"
+            print(f"Budget Escalation:  {escalation}")
+    
+
+        print(config.BANNER_CHAR * config.LINE_WIDTH)
+
+    def prompt_user_approval(self): # prompts user to approve or reject the generated procurement decision or quit
+        while True:
+            choice = input("\nDo you APPROVE this recommendation? (Y/N/Defer/Quit): ").strip().upper()
+            if choice in ['Y', 'YES']:
+                print("\n[STATUS] Procurement recommendation APPROVED.")
+                return "APPROVED", None
+            elif choice in ['N', 'NO']:
+                while True:
+                    reason = input("Enter reason for rejection/overriding decision: ").strip()
+                    if reason:
+                        print(f"\n[STATUS] Procurement recommendation REJECTED. (Reason: {reason})")
+                        return "REJECTED", reason
+
+                    print("[ERROR] A rejection reason is required.")
+
+            elif choice in ['D','DEFER','Q', 'QUIT']:
+                print("\n[STATUS] Decision deferred. Marked as PENDING.")
+                return "DEFER", None
+            else:
+                print("Invalid response. Please enter 'Y' for Yes, 'N' for No, 'D' to Defer or 'Q' to Quit.")
+
+    def display_previous_recommendations(self, records):
+        self.print_section_heading("PREVIOUS PROCUREMENT ASSESSMENTS")
+        if not records:
+            print("No previous procurement assessments found.")
             return None
 
-        if not choice.isdigit():
-            print("Invalid input. Enter a number or 'q'.")
-            continue
+        for idx, record in enumerate(records, start=1):
+            item_id = record.get("item_id", "Unknown")
+            action = record.get("action", "N/A")
+            status = record.get("approval_status", "N/A")
+            timestamp = self.format_timestamp(record.get("timestamp"))
+            print(f"[{idx}] Item ID: {item_id} | Action: {action} | Status: {status} | Date: {timestamp}")
 
-        record_number = int(choice)
+        while True:
+            choice = input("\nEnter assessment number to view details, or 'q' to return: ").strip()
 
-        if record_number < 1 or record_number > len(history):
-            print("Invalid assessment number.")
-            continue
+            if choice.lower() in ["q", "quit"]:
+                return None
 
-        return record_number - 1
-
-def print_wrapped_field(label, value, width=50):
-    text = str(value or "N/A")
-    wrapped_text = textwrap.fill(
-        text,
-        width=width,
-    )
-    print(f"{label}: \n{wrapped_text}")
-
-
-def display_historical_procurement_report(record):
-    print_section_heading("HISTORICAL PROCUREMENT ASSESSMENT")
-
-    print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
-    print(f"Item ID: {record.get('item_id', 'N/A')}")
-    print(f"Date: {format_timestamp(record.get('timestamp'))}")
-    if record.get("status_updated"):
-        print(f"Status Last Updated: {format_timestamp(record['status_updated'])}")   
-    print(f"Decision: {record.get('approval_status', 'N/A')}")
-    print(f"Action: {record.get('action', 'N/A')}")
-    print(
-        f"Recommended Quantity: "
-        f"{record.get('recommended_quantity', 'N/A')}"
-    )
-    print(f"Priority: {record.get('priority', 'N/A')}")
-
-    inventory = record.get("inventory_snapshot") or {}
-    ai_assessment = record.get("ai_assessment") or {}
-    analysis = record.get("analysis_result") or {}
-
-    print_section_heading("ORIGINAL INVENTORY DETAILS")
-    if inventory:
-        for field, value in inventory.items():
-            label = field.replace("_", " ").title()
-
-            if field == "operational_notes":
-                print_wrapped_field(label, value)
-            else:
-                print(f"{label}: {value}")
-    else:
-        print("No historical inventory snapshot available.")
-
-    print_section_heading("AI ASSESSMENT")
-    if ai_assessment:
-        for field, value in ai_assessment.items():
-            label = field.replace("_", " ").title()
-
-            if field == "reason":
-                print_wrapped_field(label, value)
-            else:
-                print(f"{label}: {value}")
-    else:
-        print("No historical AI assessment available.")
-
-    print_section_heading("PROCUREMENT ANALYSIS")
-    if analysis:
-        for field, value in analysis.items():
-            print(f"{field.replace('_', ' ').title()}: {value}")
-    else:
-        print("No historical analysis result available.")
-
-    rejection_reason = record.get("rejection_reason")
-    if rejection_reason:
-        print(f"\nRejection Reason: {rejection_reason}")
-
-def prompt_record_action(record):
-    # Returns (action, data): ("UPDATE", updates_dict), ("DELETE", None) or ("BACK", None)
-    print_section_heading("Record Actions")
-    print("1. Change approval status")
-    print("2. Delete this record")
-    print("3. Back to list\n")
-
-    while True:
-        choice = input("Select an option (1-3): ").strip()
-
-        if choice == "1":
-            current = record.get("approval_status")
-            options = [s for s in ["PENDING", "APPROVED", "REJECTED"] if s != current]
-
-            print(f"\nCurrent status: {current}")
-            for number, status in enumerate(options, start=1):
-                print(f"{number}. {status}")
-
-            picked = input(f"Choose new status (1-{len(options)}, or 'q' to cancel): ").strip()
-            if picked.lower() in ["q", "quit"]:
-                return "BACK", None
-            if not picked.isdigit() or not 1 <= int(picked) <= len(options):
-                print("Invalid choice.")
+            if not choice.isdigit():
+                print("Invalid input. Enter a number or 'q' to quit.")
                 continue
+            record_number = int(choice)
+            if record_number < 1 or record_number > len(records):
+                print("Invalid assessment number.")
+                continue
+            return records[record_number - 1].get("procurement_id")
+        
+    def print_wrapped_field(self, label, value, width=50):
+        text = str(value or "N/A")
+        wrapped_text = textwrap.fill(text, width=width)
+        print(f"{label}: \n{wrapped_text}")
 
-            new_status = options[int(picked) - 1]
+    def display_historical_procurement_report(self, record):
+        self.print_section_heading("HISTORICAL PROCUREMENT ASSESSMENT")
+        print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
+        print(f"Item ID: {record.get('item_id', 'N/A')}")
+        print(f"Date: {self.format_timestamp(record.get('timestamp'))}")
+        if record.get("status_updated"):
+            print(f"Status Last Updated: {self.format_timestamp(record.get('status_updated'))}")
+        print(f"Decision: {record.get('approval_status', 'N/A')}")
+        print(f"Action: {record.get('action', 'N/A')}")
+        print(f"Recommended Quantity: {record.get('recommended_quantity', 'N/A')}")
+        print(f"Priority: {record.get('priority', 'N/A')}")
 
-            if new_status == "REJECTED":
-                reason = ""
-                while not reason:
-                    reason = input("Enter reason for rejection: ").strip()
-                    if not reason:
-                        print("[ERROR] A rejection reason is required.")
-                return "UPDATE", {"approval_status": "REJECTED", "rejection_reason": reason}
+        inventory = record.get("inventory_snapshot") or {}
+        ai_assessment = record.get("ai_assessment") or {}
+        analysis = record.get("analysis_result") or {}
 
-            # APPROVED / PENDING must clear any old rejection reason
-            return "UPDATE", {"approval_status": new_status, "rejection_reason": None}
+        self.print_section_heading("ORIGINAL INVENTORY DETAILS")
+        if inventory:
+            for field, value in inventory.items():
+                label = field.replace("_", " ").title()
 
-        elif choice == "2":
-            confirm = input("Delete this record permanently? (Y/N): ").strip().upper()
-            if confirm in ["Y", "YES"]:
-                return "DELETE", None
-            print("Delete cancelled.")
-            return "BACK", None
-
-        elif choice == "3":
-            return "BACK", None
-
+                if field == "operational_notes":
+                    self.print_wrapped_field(label, value)
+                else:
+                    print(f"{label}: {value}")
         else:
-            print("Please enter 1, 2 or 3.")
+            print("No historical inventory snapshot available.")
 
-def prompt_remove_inventory(records):
-    # Returns the index of the record to remove, or None if cancelled.
-    if not records:
-        print("\nNo inventory records found.")
-        return None
+        self.print_section_heading("AI ASSESSMENT")
+        if ai_assessment:
+            for field, value in ai_assessment.items():
+                label = field.replace("_", " ").title()
 
-    display_inventory_records(records)
+                if field == "reason":
+                    self.print_wrapped_field(label, value)
+                else:
+                    print(f"{label}: {value}")
+        else:
+            print("No historical AI assessment available.")
 
-    while True:
-        choice = input(
-            "\nEnter the record number to remove (or 'q' to cancel): "
-        ).strip()
+        self.print_section_heading("PROCUREMENT ANALYSIS")
+        if analysis:
+            for field, value in analysis.items():
+                print(f"{field.replace('_', ' ').title()}: {value}")
+        else:
+            print("No historical analysis result available.")
 
-        if choice.lower() in ["q", "quit"]:
-            return None
+        rejection_reason = record.get("rejection_reason")
+        if rejection_reason:
+            print(f"\nRejection Reason: {rejection_reason}")
 
-        if not choice.isdigit() or not 1 <= int(choice) <= len(records):
-            print("Invalid record number.")
-            continue
+    def display_procurement_history(self, history):
+        self.print_section_heading("PROCUREMENT STATUS HISTORY")
+        if not history:
+            print("No history events recorded.")
+            return
+        for h in history:
+            t = self.format_timestamp(h.get("changed_at"))
+            ev = h.get("event_type", "UPDATE")
+            prev = h.get("previous_status", "None")
+            new = h.get("new_status", "N/A")
+            reason = h.get("reason")
+            print(f"[{t}] Event: {ev} | Status: {prev} -> {new}" + (f" | Reason: {reason}" if reason else ""))
 
-        index = int(choice) - 1
-        name = records[index].get("item_name") or records[index].get("item_id", "this item")
+    def prompt_record_action(self, record):
+        self.print_section_heading("Record Actions")
+        print("1. Change approval status")
+        print("2. Delete this record")
+        print("3. Back to list\n")
 
-        confirm = input(f"Permanently remove '{name}'? (Y/N): ").strip().upper()
-        if confirm in ["Y", "YES"]:
-            return index
+        while True:
+            choice = input("Select an option (1-3): ").strip()
 
-        print("Removal cancelled.")
-        return None
+            if choice == "1":
+                current = record.get("approval_status")
+                options = [s for s in ["PENDING", "APPROVED", "REJECTED"] if s != current]
+
+                print(f"\nCurrent status: {current}")
+                for number, status in enumerate(options, start=1):
+                    print(f"{number}. {status}")
+
+                picked = input(f"Choose new status (1-{len(options)}, or 'q' to cancel): ").strip()
+                if picked.lower() in ["q", "quit"]:
+                    return "BACK", None
+                if not picked.isdigit() or not 1 <= int(picked) <= len(options):
+                    print("Invalid choice.")
+                    continue
+
+                new_status = options[int(picked) - 1]
+                reason = None
+
+                if new_status == "REJECTED":
+                    reason = ""
+                    while not reason:
+                        reason = input("Enter reason for rejection: ").strip()
+                        if not reason:
+                            print("[ERROR] A rejection reason is required.")
+
+                # APPROVED / PENDING must clear any old rejection reason
+                return "UPDATE", {"approval_status": new_status, "rejection_reason": reason}
+
+            elif choice == "2":
+                confirm = input("Delete this record permanently? (Y/N): ").strip().upper()
+                if confirm in ["Y", "YES"]:
+                    return "DELETE", None
+                print("Delete cancelled.")
+                return "BACK", None
+
+            elif choice == "3":
+                return "BACK", None
+
+            else:
+                print("Please enter 1, 2 or 3.")
+
+def prompt_procurement_selection(self, records):
+    return self.display_previous_recommendations(records)
