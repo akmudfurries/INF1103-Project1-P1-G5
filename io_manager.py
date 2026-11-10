@@ -3,139 +3,190 @@ import validation
 import textwrap
 from datetime import datetime
 
-def format_timestamp(value):
+class IOManager:
+    def __init__(self):
+        pass
+
+    def format_timestamp(self, value):
     # Turns '2026-10-14T16:54:03' into '14 Oct 2026, 04:54 PM'
-    try:
-        return datetime.fromisoformat(value).strftime("%d %b %Y, %I:%M %p")
-    except (TypeError, ValueError):
-        return value or "N/A"
+        try:
+            return datetime.fromisoformat(value).strftime("%d %b %Y, %I:%M %p")
+        except (TypeError, ValueError):
+            return value or "N/A"
 
-def print_section_heading(title, width=50):
-    print("\n" + "=" * width)
-    print(title.center(width))
-    print("=" * width)
+    def print_section_heading(self, title, width=50):
+        print("\n" + "=" * width)
+        print(title.center(width))
+        print("=" * width)
 
-def print_header(): # display top app title banner
-    print(config.BANNER_CHAR * config.LINE_WIDTH)
-    print(f"{config.APP_TITLE.center(config.LINE_WIDTH)}")
-    print(f"{config.APP_SUBTITLE.center(config.LINE_WIDTH)}")
-    print(config.BANNER_CHAR * config.LINE_WIDTH)
+    def print_header(self): # display top app title banner
+        print(config.BANNER_CHAR * config.LINE_WIDTH)
+        print(f"{config.APP_TITLE.center(config.LINE_WIDTH)}")
+        print(f"{config.APP_SUBTITLE.center(config.LINE_WIDTH)}")
+        print(config.BANNER_CHAR * config.LINE_WIDTH)
 
-def get_main_menu_choice(): # renders main CLI menu with quit and captures user choice
-    print("\n [ MAIN MENU ]")
-    print("1. Add new inventory record")
-    print("2. View stored inventory records")
-    print("3. Run inventory analysis")
-    print("4. View previous procurement recommendations")
-    print("5. Remove inventory record")
-    print("6. Exit")
-    return input("\nSelect an option (1-6): ").strip().lower()
+    def get_main_menu_choice(self): # renders main CLI menu with quit and captures user choice
+        print("\n [ MAIN MENU ]")
+        print("1. Add new inventory record")
+        print("2. View stored inventory records")
+        print("3. Run inventory analysis")
+        print("4. View previous procurement recommendations")
+        print("5. Remove inventory record")
+        print("6. What-if Procurement Scenario Simulation")
+        print("7. Exit")
+        return input("\nSelect an option (1-7): ").strip().lower()
 
-def _get_input_or_cancel(prompt_text):
+    def _get_input_or_cancel(self, prompt_text):
     # helper to catch 'q' or 'quit' at any prompt.
-    val = input(prompt_text).strip()
-    if val.lower() in ['q', 'quit']:
-        print("\n[!] Operation cancelled by user.")
-        return None
-    return val
+        val = input(prompt_text).strip()
+        if val.lower() in ['q', 'quit']:
+            print("\n[!] Operation cancelled by user.")
+            return None
+        return val
 
-def prompt_inventory_record(): # collects raw inventory item input fields
-    print("\n" + config.DIVIDER_CHAR * config.LINE_WIDTH)
-    print(" CREATE NEW INVENTORY RECORD (Type 'q' to cancel) ")
-    print(config.DIVIDER_CHAR * config.LINE_WIDTH)
+    def display_status_message(self, message, success=True):
+        prefix = "[STATUS]" if success else "[ERROR]"
+        print(f"\n{prefix} {message}")
 
-    fields_to_prompt = [
-        ("item_id", "Item Name / ID: "),
-        ("category", "Category: "),
-        ("Current Stock", "Current Stock (units): "),
-        ("Average Weekly Usage", "Average Weekly Usage (units): "),
-        ("Supplier Lead Time", "Supplier Lead Time (weeks): "),
-        ("Minimum Order Quantity", "Minimum Order Quantity (units): "),
-        ("Unit Cost", "Unit Cost ($): "),
-        ("Available Budget", "Available Budget ($): "),
-        ("operational_notes", "Operational Notes: ")
-    ]
+    def display_error(self, message):
+        print(f"\n[ERROR] {message}")
 
-    collected = {}
-    for key, prompt_text in fields_to_prompt:
-        while True:
-            val = _get_input_or_cancel(prompt_text)
-            if val is None:
-                return None
+    def prompt_inventory_record(self): # collects raw inventory item input fields
+        print("\n" + config.DIVIDER_CHAR * config.LINE_WIDTH)
+        print(" CREATE NEW INVENTORY RECORD (Type 'q' to cancel) ")
+        print(config.DIVIDER_CHAR * config.LINE_WIDTH)
+
+        fields_to_prompt = [
+            ("item_id", "Item Name / ID: "),
+            ("category", "Category: "),
+            ("Current Stock", "Current Stock (units): "),
+            ("Average Weekly Usage", "Average Weekly Usage (units): "),
+            ("Supplier Lead Time", "Supplier Lead Time (weeks): "),
+            ("Minimum Order Quantity", "Minimum Order Quantity (units): "),
+            ("Unit Cost", "Unit Cost ($): "),
+            ("Available Budget", "Available Budget ($): "),
+            ("operational_notes", "Operational Notes: ")
+        ]
+
+        collected = {}
+        for key, prompt_text in fields_to_prompt:
+            while True:
+                val = self._get_input_or_cancel(prompt_text)
+                if val is None:
+                    return None
             
-            is_valid, err_msg = validation.validate_single_field(key, val)
-            if is_valid:
-                if key in ["Current Stock", "Supplier Lead Time", "Minimum Order Quantity"]:
-                    collected[key] = int(val)
-                elif key in ["Average Weekly Usage", "Unit Cost", "Available Budget"]:
-                    collected[key] = float(val)
+                is_valid, err_msg = validation.validate_single_field(key, val)
+                if is_valid:
+                    if key in ["Current Stock", "Supplier Lead Time", "Minimum Order Quantity"]:
+                        collected[key] = int(val)
+                    elif key in ["Average Weekly Usage", "Unit Cost", "Available Budget"]:
+                        collected[key] = float(val)
+                    else:
+                        collected[key] = val
+                    break
                 else:
-                    collected[key] = val
-                break
-            else:
-                print(f"  [!] Validation Error: {err_msg} Please try again.")
+                    print(f"  [!] Validation Error: {err_msg} Please try again.")
 
 # mapped keys matching team schema
-    return {
-        "item_id": collected["item_id"],
-        "item_name": collected["item_id"],
-        "category": collected["category"],
-        "current_stock": collected["Current Stock"],
-        "weekly_usage": collected["Average Weekly Usage"],
-        "lead_time_weeks": collected["Supplier Lead Time"],
-        "moq": collected["Minimum Order Quantity"],
-        "unit_cost": collected["Unit Cost"],
-        "budget": collected["Available Budget"],
-        "operational_notes": collected["operational_notes"]
-    }
+        return {
+            "item_id": collected["item_id"],
+            "item_name": collected["item_id"],
+            "category": collected["category"],
+            "current_stock": collected["Current Stock"],
+            "weekly_usage": collected["Average Weekly Usage"],
+            "lead_time_weeks": collected["Supplier Lead Time"],
+            "moq": collected["Minimum Order Quantity"],
+            "unit_cost": collected["Unit Cost"],
+            "budget": collected["Available Budget"],
+            "operational_notes": collected["operational_notes"]
+        }
 
-def display_inventory_records(records): # displays saved inventory records
-    if not records:
-        print("\nNo inventory records found.")
-        return
+    def display_inventory_records(self, records): # displays saved inventory records
+        if not records:
+             print("\nNo inventory records found.")
+             return
 
-    print_section_heading("STORED INVENTORY RECORDS")
-    for idx, item in enumerate(records, start=1):
-        name = item.get("item_name") or item.get("item", "Unknown Item")
-        cat = item.get("category", "General")
-        stock = item.get("current_stock", 0)
-        notes = item.get("operational_notes") or "None provided"
+        self.print_section_heading("STORED INVENTORY RECORDS")
+        for idx, item in enumerate(records, start=1):
+            # support both objects and dictionaries
+            name = getattr(item, "item_name", None) or (item.get("item_name") if isinstance(item, dict) else None) or (item.get("item") if isinstance(item, dict) else "Unknown Item")
+            cat = getattr(item, "category", None) or (item.get("category", "General") if isinstance(item, dict) else "General")
+            stock = getattr(item, "current_stock", None) if not isinstance(item, dict) else item.get("current_stock", 0)
+            notes = getattr(item, "operational_notes", None) or (item.get("operational_notes") if isinstance(item, dict) else "None provided")
 
-        print(f"\n[{idx}] {name} | Category: {cat} | Stock: {stock} units")
-        print("    Operational Notes:")
-        wrapped_notes = textwrap.fill(
-            notes,
-            width=50,
-            initial_indent="    ",
-            subsequent_indent="    "
-        )
-        print(wrapped_notes)
+            print(f"\n[{idx}] {name} | Category: {cat} | Stock: {stock} units")
+            print("    Operational Notes:")
+            wrapped_notes = textwrap.fill(
+                str(notes),
+                width=50,
+                initial_indent="    ",
+                subsequent_indent="    "
+            )
+            print(wrapped_notes)
 
-def display_full_procurement_report(inventory, ai_assessment, analysis_result): # renders complete analysis output and metrics
-    print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
-    print(f"{config.APP_TITLE:^{config.LINE_WIDTH}}")
-    print(config.BANNER_CHAR * config.LINE_WIDTH)
+    def prompt_inventory_selection(self, records): # prompts user to select an inventory record for analysis
+        if not records:
+            print("\nNo inventory records found.")
+            return None
 
-    item_name = inventory.get('item_name') or inventory.get('item', 'N/A')
-    category = inventory.get('category', 'General')
-    print(f"Item Name: {item_name} ({category})")
+        self.display_inventory_records(records)
+        choice = input("\nEnter the record number to select (or 'q' to cancel): ").strip()
+        if choice.lower() in ["q", "quit"]:
+            return None
+        if not choice.isdigit() or not 1 <= int(choice) <= len(records):
+            print("Invalid record number.")
+            return None
+        selected = records[int(choice) - 1]
+        return getattr(selected, "item_id", None) or (selected.get("item_id") 
+
+    def prompt_inventory_removal(self, records): # prompts user to select an inventory record for removal
+        if not records:
+            print("\nNo inventory records found.")
+            return None
+        self.display_inventory_records(records)
+        choice = input("\nEnter the record number to remove (or 'q' to cancel): ").strip()
+        if choice.lower() in ["q", "quit"]:
+            return None
+        if not choice.isdigit() or not 1 <= int(choice) <= len(records):
+            print("Invalid record number.")
+            return None
+        selected = records[int(choice) - 1]
+        name = getattr(selected, "item_name", None) or (selected.get("item_name") if isinstance(selected, dict) else selected.get("item_id"))
+        confirm = input(f"Permanently remove '{name}'? (Y/N): ").strip().upper()
+        if confirm in ["Y", "YES"]:
+            return getattr(selected, "item_id", None) or selected.get("item_id")
+        return None
+
+    def display_full_procurement_report(self, inventory, ai_assessment, analysis_result): # renders complete analysis output and metrics
+        print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
+        print(f"{config.APP_TITLE:^{config.LINE_WIDTH}}")
+        print(config.BANNER_CHAR * config.LINE_WIDTH)
+
+        item_name = getattr(inventory, 'item_name', None) or (inventory.get('item_name') if isinstance(inventory, dict) else None) or (inventory.get('item', 'N/A') if isinstance(inventory, dict) else 'N/A')
+        category = getattr(inventory, 'category', None) or (inventory.get('category', 'General') if isinstance(inventory, dict) else 'General')
+        print(f"Item Name: {item_name} ({category})")
 
     # quantitative inventory data
-    print_section_heading("Inventory Data")
-    print(f"Current Stock:      {inventory.get('current_stock', 0)} units")
-    print(f"Weekly Usage:       {inventory.get('weekly_usage', 0.0)} units")
-    print(f"Supplier Lead Time: {inventory.get('lead_time_weeks', 0)} weeks")
-    wrapped_notes = textwrap.fill(
-        inventory.get('operational_notes', 'None provided'),
-        width=50,
-        initial_indent="",
-        subsequent_indent=""
-    )
-    print(f"Operational Notes: \n{wrapped_notes}\n")
+        self.print_section_heading("Inventory Data")
+        stock_val = getattr(inventory, 'current_stock', 0) if not isinstance(inventory, dict) else inventory.get('current_stock', 0)
+        usage_val = getattr(inventory, 'weekly_usage', 0.0) if not isinstance(inventory, dict) else inventory.get('weekly_usage', 0.0)
+        lead_val = getattr(inventory, 'lead_time_weeks', 0) if not isinstance(inventory, dict) else inventory.get('lead_time_weeks', 0)
+        notes_val = getattr(inventory, 'operational_notes', 'None provided') if not isinstance(inventory, dict) else inventory.get('operational_notes', 'None provided')
+          
+        print(f"Current Stock:      {stock_val} units")
+        print(f"Weekly Usage:       {usage_val} units")
+        print(f"Supplier Lead Time: {lead_val} weeks")
+        wrapped_notes = textwrap.fill(
+            str(notes_val),
+            width=50,
+            initial_indent="",
+            subsequent_indent=""
+        )
+        print(f"Operational Notes: \n{wrapped_notes}\n")
 
-    coverage = analysis_result.get('stock_coverage')
-    coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
-    print(f"Stock Coverage:     {coverage_str}")
+        coverage = analysis_result.get('stock_coverage')
+        coverage_str = f"{coverage:.1f} weeks" if coverage is not None else "N/A"
+        print(f"Stock Coverage:     {coverage_str}")
 
     # ai assessment (ref to ai_manager.py  / business_rules.py)
     print_section_heading("AI Assessment")
