@@ -409,5 +409,68 @@ class IOManager:
             else:
                 print("Please enter 1, 2 or 3.")
 
-def prompt_procurement_selection(self, records):
-    return self.display_previous_recommendations(records)
+    def prompt_procurement_selection(self, records):
+        return self.display_previous_recommendations(records)
+
+    # what-if simulation methods
+    def prompt_simulation_parameters(self):
+        print("\n" + config.DIVIDER_CHAR * config.LINE_WIDTH)
+        print(" WHAT-IF PROCUREMENT SCENARIO SIMULATION (Type 'q' to cancel) ")
+        print(config.DIVIDER_CHAR * config.LINE_WIDTH)
+
+        while True:
+            usage_str = input("Enter simulated weekly usage (numeric, >= 0): ").strip()
+            if usage_str.lower() in ['q', 'quit']:
+                print("\n[!] Simulation cancelled by user.")
+                return None
+            try:
+                simulated_usage = float(usage_str)
+                if simulated_usage < 0:
+                    print("  [!] Error: Weekly usage cannot be negative.")
+                    continue
+                break
+            except ValueError:
+                print("  [!] Error: Please enter a valid number.")
+
+        while True:
+            lead_str = input("Enter simulated supplier lead time (integer weeks, >= 0): ").strip()
+            if lead_str.lower() in ['q', 'quit']:
+                print("\n[!] Simulation cancelled by user.")
+                return None
+            try:
+                simulated_lead_time = int(lead_str)
+                if simulated_lead_time < 0:
+                    print("  [!] Error: Lead time cannot be negative.")
+                    continue
+                break
+            except ValueError:
+                print("  [!] Error: Please enter a whole number.")
+
+        return simulated_usage, simulated_lead_time
+
+    def display_simulation_comparison(self, current_result, simulated_result):
+        print("\n" + config.BANNER_CHAR * config.LINE_WIDTH)
+        print(f"{'SIMULATION COMPARISON REPORT':^{config.LINE_WIDTH}}")
+        print(config.BANNER_CHAR * config.LINE_WIDTH)
+        print("[!] Note: Simulation results are for analysis only and do not modify actual inventory records.\n")
+        
+        metrics = [
+            ("Recommended Quantity", "recommended_quantity", " units"),
+            ("Reorder Point", "reorder_point", " units"),
+            ("Safety Stock", "safety_stock", " units"),
+            ("Priority", "priority", ""),
+            ("Action", "action", ""),
+            ("Estimated Cost", "estimated_cost", "$")
+        ]
+
+        print(f"{'Metric':<25} | {'Baseline':<12} | {'Simulated':<12}")
+        print("-" * 55)
+        for label, key, suffix in metrics:
+            curr_val = current_result.get(key, "N/A")
+            sim_val = simulated_result.get(key, "N/A")
+            
+            curr_str = f"${curr_val:.2f}" if suffix == "$" and isinstance(curr_val, (int, float)) else f"{curr_val}{suffix}"
+            sim_str = f"${sim_val:.2f}" if suffix == "$" and isinstance(sim_val, (int, float)) else f"{sim_val}{suffix}"
+
+            print(f"{label:<25} | {curr_str:<12} | {sim_str:<12}")
+        print(config.BANNER_CHAR * config.LINE_WIDTH)
