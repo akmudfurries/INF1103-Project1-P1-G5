@@ -74,3 +74,58 @@ class DatabaseRepository:
         """close the sqlite connection"""
         if self.conn:
             self.conn.close()
+
+    #inventory stuff
+    def insert_inventory(self, record):
+        #insert or replace inventory record dict
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT OR REPLACE INTO inventory 
+                (item_id, item_name, category, current_stock, weekly_usage, 
+                 lead_time_weeks, operational_notes, moq, unit_cost, budget)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                record.get("item_id"),
+                record.get("item_name"),
+                record.get("category", "Uncategorized"),
+                record.get("current_stock", 0),
+                record.get("weekly_usage", 0.0),
+                record.get("lead_time_weeks", 0),
+                record.get("operational_notes", ""),
+                record.get("moq", 0),
+                record.get("unit_cost", 0.0),
+                record.get("budget", 0.0)
+            ))
+            self.conn.commit()
+            return True, None
+        except Exception as e:
+            self.conn.rollback()
+            return False, str(e)
+
+    def fetch_all_inventory(self):
+        #fetch inventory records as a list of dict
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM inventory")
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
+    def fetch_inventory(self, item_id):
+        #fetch single inventory record
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM inventory WHERE item_id = ?", (item_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+
+    def delete_inventory(self, item_id):
+        #delete inventory record
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("DELETE FROM inventory WHERE item_id = ?", (item_id,))
+            if cursor.rowcount == 0:
+                return False, f"Inventory item {item_id} not found."
+            self.conn.commit()
+            return True, None
+        except Exception as e:
+            self.conn.rollback()
+            return False, str(e)
