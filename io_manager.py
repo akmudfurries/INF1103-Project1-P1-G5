@@ -1,3 +1,5 @@
+from models import InventoryRecord
+
 import config
 import validation
 import textwrap
@@ -57,7 +59,8 @@ class IOManager:
         print(config.DIVIDER_CHAR * config.LINE_WIDTH)
 
         fields_to_prompt = [
-            ("item_id", "Item Name / ID: "),
+            ("item_id", "Item ID: "),
+            ("item_name", "Item Name: "),
             ("category", "Category: "),
             ("Current Stock", "Current Stock (units): "),
             ("Average Weekly Usage", "Average Weekly Usage (units): "),
@@ -75,7 +78,8 @@ class IOManager:
                 if val is None:
                     return None
             
-                is_valid, err_msg = validation.validate_single_field(key, val)
+                validation_key = "item_id" if key == "item_name" else key
+                is_valid, err_msg = validation.validate_single_field(validation_key, val)
                 if is_valid:
                     if key in ["Current Stock", "Supplier Lead Time", "Minimum Order Quantity"]:
                         collected[key] = int(val)
@@ -88,18 +92,18 @@ class IOManager:
                     print(f"  [!] Validation Error: {err_msg} Please try again.")
 
 # mapped keys matching team schema
-        return {
-            "item_id": collected["item_id"],
-            "item_name": collected["item_id"],
-            "category": collected["category"],
-            "current_stock": collected["Current Stock"],
-            "weekly_usage": collected["Average Weekly Usage"],
-            "lead_time_weeks": collected["Supplier Lead Time"],
-            "moq": collected["Minimum Order Quantity"],
-            "unit_cost": collected["Unit Cost"],
-            "budget": collected["Available Budget"],
-            "operational_notes": collected["operational_notes"]
-        }
+        return InventoryRecord(
+            item_id=collected["item_id"],
+            item_name=collected["item_name"],
+            category=collected["category"],
+            current_stock=collected["Current Stock"],
+            weekly_usage=collected["Average Weekly Usage"],
+            lead_time_weeks=collected["Supplier Lead Time"],
+            moq=collected["Minimum Order Quantity"],
+            unit_cost=collected["Unit Cost"],
+            budget=collected["Available Budget"],
+            operational_notes=collected["operational_notes"]
+        )
 
     def display_inventory_records(self, records): # displays saved inventory records
         if not records:
@@ -137,7 +141,11 @@ class IOManager:
             print("Invalid record number.")
             return None
         selected = records[int(choice) - 1]
-        return getattr(selected, "item_id", None) or (selected.get("item_id")) 
+
+        if isinstance(selected, dict):
+            return selected.get("item_id")
+
+        return selected.item_id
 
     def prompt_inventory_removal(self, records): # prompts user to select an inventory record for removal
         if not records:
@@ -199,16 +207,20 @@ class IOManager:
         print(f"Stock Coverage:     {coverage_str}")
 
         # ai assessment (ref to ai_manager.py  / business_rules.py)
+        # AI assessment
         self.print_section_heading("AI Assessment")
-        print(f"Demand Level:           {ai_assessment.get('demand_level', 'N/A').upper()}")
-        print(f"Demand Trend:           {ai_assessment.get('demand_trend', 'N/A').upper()}")
-        print(f"Supply Risk:            {ai_assessment.get('supply_risk', 'N/A').upper()}")
-        print(f"Operational Importance: {ai_assessment.get('operational_importance', 'N/A').upper()}")
+
+        print(f"Demand Level:   {ai_assessment.demand_level.upper()}")
+        print(f"Demand Trend:   {ai_assessment.demand_trend.upper()}")
+        print(f"Supply Risk:    {ai_assessment.supply_risk.upper()}")
+        print(
+            f"Operational Importance: "
+            f"{ai_assessment.operational_importance.upper()}"
+        )
+
         wrapped_reason = textwrap.fill(
-            ai_assessment.get('reason', 'N/A'),
-            width=50,
-            initial_indent="",
-            subsequent_indent=""
+            ai_assessment.reason,
+            width=50
         )
         print(f"Reason: \n{wrapped_reason}")
     
@@ -264,31 +276,20 @@ class IOManager:
 
     def display_previous_recommendations(self, records):
         self.print_section_heading("PREVIOUS PROCUREMENT ASSESSMENTS")
+
         if not records:
             print("No previous procurement assessments found.")
-            return None
+            return
 
         for idx, record in enumerate(records, start=1):
-            item_id = record.get("item_id", "Unknown")
-            action = record.get("action", "N/A")
-            status = record.get("approval_status", "N/A")
-            timestamp = self.format_timestamp(record.get("timestamp"))
-            print(f"[{idx}] Item ID: {item_id} | Action: {action} | Status: {status} | Date: {timestamp}")
+            timestamp = self.format_timestamp(record.timestamp)
 
-        while True:
-            choice = input("\nEnter assessment number to view details, or 'q' to return: ").strip()
-
-            if choice.lower() in ["q", "quit"]:
-                return None
-
-            if not choice.isdigit():
-                print("Invalid input. Enter a number or 'q' to quit.")
-                continue
-            record_number = int(choice)
-            if record_number < 1 or record_number > len(records):
-                print("Invalid assessment number.")
-                continue
-            return records[record_number - 1].get("procurement_id")
+            print(
+                f"[{idx}] Item ID: {record.item_id} | "
+                f"Action: {record.action} | "
+                f"Status: {record.approval_status} | "
+                f"Date: {timestamp}"
+            )
         
     def print_wrapped_field(self, label, value, width=50):
         text = str(value or "N/A")
@@ -297,21 +298,28 @@ class IOManager:
 
     def display_historical_procurement_report(self, record):
         self.print_section_heading("HISTORICAL PROCUREMENT ASSESSMENT")
-        print(f"Procurement ID: {record.get('procurement_id', 'N/A')}")
-        print(f"Item ID: {record.get('item_id', 'N/A')}")
-        print(f"Date: {self.format_timestamp(record.get('timestamp'))}")
-        if record.get("status_updated"):
-            print(f"Status Last Updated: {self.format_timestamp(record.get('status_updated'))}")
-        print(f"Decision: {record.get('approval_status', 'N/A')}")
-        print(f"Action: {record.get('action', 'N/A')}")
-        print(f"Recommended Quantity: {record.get('recommended_quantity', 'N/A')}")
-        print(f"Priority: {record.get('priority', 'N/A')}")
 
-        inventory = record.get("inventory_snapshot") or {}
-        ai_assessment = record.get("ai_assessment") or {}
-        analysis = record.get("analysis_result") or {}
+        print(f"Procurement ID: {record.procurement_id or 'N/A'}")
+        print(f"Item ID: {record.item_id}")
+        print(f"Date: {self.format_timestamp(record.timestamp)}")
+
+        if record.status_updated:
+            print(
+                f"Status Last Updated: "
+                f"{self.format_timestamp(record.status_updated)}"
+            )
+
+        print(f"Decision: {record.approval_status}")
+        print(f"Action: {record.action}")
+        print(f"Recommended Quantity: {record.recommended_quantity}")
+        print(f"Priority: {record.priority}")
+
+        inventory = record.inventory_snapshot or {}
+        ai_assessment = record.ai_assessment or {}
+        analysis = record.analysis_result or {}
 
         self.print_section_heading("ORIGINAL INVENTORY DETAILS")
+
         if inventory:
             for field, value in inventory.items():
                 label = field.replace("_", " ").title()
@@ -324,6 +332,7 @@ class IOManager:
             print("No historical inventory snapshot available.")
 
         self.print_section_heading("AI ASSESSMENT")
+
         if ai_assessment:
             for field, value in ai_assessment.items():
                 label = field.replace("_", " ").title()
@@ -336,15 +345,15 @@ class IOManager:
             print("No historical AI assessment available.")
 
         self.print_section_heading("PROCUREMENT ANALYSIS")
+
         if analysis:
             for field, value in analysis.items():
                 print(f"{field.replace('_', ' ').title()}: {value}")
         else:
             print("No historical analysis result available.")
 
-        rejection_reason = record.get("rejection_reason")
-        if rejection_reason:
-            print(f"\nRejection Reason: {rejection_reason}")
+        if record.rejection_reason:
+            print(f"\nRejection Reason: {record.rejection_reason}")
 
     def display_procurement_history(self, history):
         self.print_section_heading("PROCUREMENT STATUS HISTORY")
@@ -361,56 +370,72 @@ class IOManager:
 
     def prompt_record_action(self, record):
         self.print_section_heading("Record Actions")
-        print("1. Change approval status")
-        print("2. Delete this record")
-        print("3. Back to list\n")
+
+        print("1. View procurement details and history")
+        print("2. Approve procurement")
+        print("3. Reject procurement")
+        print("4. Delete this record")
+        print("5. Back to list\n")
 
         while True:
-            choice = input("Select an option (1-3): ").strip()
+            choice = input("Select an option (1-5): ").strip()
 
             if choice == "1":
-                current = record.get("approval_status")
-                options = [s for s in ["PENDING", "APPROVED", "REJECTED"] if s != current]
-
-                print(f"\nCurrent status: {current}")
-                for number, status in enumerate(options, start=1):
-                    print(f"{number}. {status}")
-
-                picked = input(f"Choose new status (1-{len(options)}, or 'q' to cancel): ").strip()
-                if picked.lower() in ["q", "quit"]:
-                    return "BACK", None
-                if not picked.isdigit() or not 1 <= int(picked) <= len(options):
-                    print("Invalid choice.")
-                    continue
-
-                new_status = options[int(picked) - 1]
-                reason = None
-
-                if new_status == "REJECTED":
-                    reason = ""
-                    while not reason:
-                        reason = input("Enter reason for rejection: ").strip()
-                        if not reason:
-                            print("[ERROR] A rejection reason is required.")
-
-                # APPROVED / PENDING must clear any old rejection reason
-                return "UPDATE", {"approval_status": new_status, "rejection_reason": reason}
+                return "VIEW", None
 
             elif choice == "2":
-                confirm = input("Delete this record permanently? (Y/N): ").strip().upper()
+                return "APPROVE", None
+
+            elif choice == "3":
+                reason = input("Enter reason for rejection: ").strip()
+
+                if not reason:
+                    print("[ERROR] A rejection reason is required.")
+                    continue
+
+                return "REJECT", reason
+
+            elif choice == "4":
+                confirm = input(
+                    "Delete this record permanently? (Y/N): "
+                ).strip().upper()
+
                 if confirm in ["Y", "YES"]:
                     return "DELETE", None
+
                 print("Delete cancelled.")
                 return "BACK", None
 
-            elif choice == "3":
+            elif choice == "5":
                 return "BACK", None
 
             else:
-                print("Please enter 1, 2 or 3.")
+                print("Please enter a number from 1 to 5.")
 
     def prompt_procurement_selection(self, records):
-        return self.display_previous_recommendations(records)
+        if not records:
+            return None
+
+        while True:
+            choice = input(
+                "\nEnter assessment number to view details, "
+                "or 'q' to return: "
+            ).strip()
+
+            if choice.lower() in ["q", "quit"]:
+                return None
+
+            if not choice.isdigit():
+                print("Invalid input. Enter a number or 'q' to quit.")
+                continue
+
+            record_number = int(choice)
+
+            if not 1 <= record_number <= len(records):
+                print("Invalid assessment number.")
+                continue
+
+            return records[record_number - 1].procurement_id
 
     # what-if simulation methods
     def prompt_simulation_parameters(self):
