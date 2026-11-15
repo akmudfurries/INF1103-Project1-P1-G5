@@ -81,7 +81,7 @@ class DatabaseRepository:
         cursor = self.conn.cursor()
         try:
             cursor.execute("""
-                INSERT OR REPLACE INTO inventory 
+                INSERT INTO inventory 
                 (item_id, item_name, category, current_stock, weekly_usage, 
                  lead_time_weeks, operational_notes, moq, unit_cost, budget)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -129,3 +129,200 @@ class DatabaseRepository:
         except Exception as e:
             self.conn.rollback()
             return False, str(e)
+
+    # Procurement operations
+
+    def insert_procurement(self, record):
+        """Insert a procurement decision and its CREATED history event."""
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute("""
+                INSERT INTO procurement (
+                    procurement_id, item_id, recommended_quantity,
+                    priority, action, approval_status, rejection_reason,
+                    timestamp, status_updated, inventory_snapshot_json,
+                    ai_assessment_json, analysis_result_json
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                record.get("procurement_id"),
+                record.get("item_id"),
+                record.get("recommended_quantity"),
+                record.get("priority"),
+                record.get("action"),
+                record.get("approval_status"),
+                record.get("rejection_reason"),
+                record.get("timestamp"),
+                record.get("status_updated"),
+                json.dumps(record.get("inventory_snapshot")),
+                json.dumps(record.get("ai_assessment")),
+                json.dumps(record.get("analysis_result"))
+            ))
+
+            cursor.execute("""
+                INSERT INTO procurement_history (
+                    procurement_id, event_type, previous_status,
+                    new_status, reason, changed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                record.get("procurement_id"),
+                "CREATED",
+                None,
+                record.get("approval_status"),
+                None,
+                datetime.now().isoformat(timespec="seconds")
+            ))
+
+            self.conn.commit()
+            return True, None
+
+        except Exception as e:
+            self.conn.rollback()
+            return False, str(e)
+
+    def fetch_all_procurement(self):
+        """Fetch all procurement decisions as dictionaries."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT * FROM procurement ORDER BY timestamp DESC")
+
+        records = []
+
+        for row in cursor.fetchall():
+            record = dict(row)
+            record["inventory_snapshot"] = json.loads(
+                record.pop("inventory_snapshot_json")
+            )
+            record["ai_assessment"] = json.loads(
+                record.pop("ai_assessment_json")
+            )
+            record["analysis_result"] = json.loads(
+                record.pop("analysis_result_json")
+            )
+            records.append(record)
+
+        return records
+
+    def fetch_procurement(self, procurement_id):
+        """Fetch one procurement decision by ID."""
+        cursor = self.conn.cursor()
+
+        cursor.execute(
+            "SELECT * FROM procurement WHERE procurement_id = ?",
+            (procurement_id,)
+        )
+
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        record = dict(row)
+        record["inventory_snapshot"] = json.loads(
+            record.pop("inventory_snapshot_json")
+        )
+        record["ai_assessment"] = json.loads(
+            record.pop("ai_assessment_json")
+        )
+        record["analysis_result"] = json.loads(
+            record.pop("analysis_result_json")
+        )
+
+        return record
+
+    def update_procurement_status(
+        self,
+        procurement_id,
+        status,
+        rejection_reason,
+        status_updated
+    ):
+        """Update procurement status and record the status change."""
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute("""
+                SELECT approval_status
+                FROM procurement
+                WHERE procurement_id = ?
+            """, (procurement_id,))
+
+            row = cursor.fetchone()
+
+            if row is None:
+                return False, f"Procurement record not found: {procurement_id}"
+
+            previous_status = row["approval_status"]
+
+            if previous_status == status:
+                return True, None
+
+            cursor.execute("""
+                UPDATE procurement
+                SET approval_status = ?,
+                    rejection_reason = ?,
+                    status_updated = ?
+                WHERE procurement_id = ?
+            """, (
+                status,
+                rejection_reason,
+                status_updated,
+                procurement_id
+            ))
+
+            cursor.execute("""
+                INSERT INTO procurement_history (
+                    procurement_id, event_type, previous_status,
+                    new_status, reason, changed_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                procurement_id,
+                "STATUS_CHANGED",
+                previous_status,
+                status,
+                rejection_reason,
+                datetime.now().isoformat(timespec="seconds")
+            ))
+
+            self.conn.commit()
+            return True, None
+
+        except Exception as e:
+            self.conn.rollback()
+            return False, str(e)
+
+    def delete_procurement(self, procurement_id):
+        """Delete a procurement record and its associated history."""
+        cursor = self.conn.cursor()
+
+        try:
+            cursor.execute(
+                "DELETE FROM procurement WHERE procurement_id = ?",
+                (procurement_id,)
+            )
+
+            if cursor.rowcount == 0:
+                return False, f"Procurement record not found: {procurement_id}"
+
+            self.conn.commit()
+            return True, None
+
+        except Exception as e:
+            self.conn.rollback()
+            return False, str(e)
+
+    def fetch_procurement_history(self, procurement_id):
+        """Fetch procurement history in chronological order."""
+        cursor = self.conn.cursor()
+
+        cursor.execute("""
+            SELECT history_id, procurement_id, event_type,
+                   previous_status, new_status, reason, changed_at
+            FROM procurement_history
+            WHERE procurement_id = ?
+            ORDER BY changed_at ASC, history_id ASC
+        """, (procurement_id,))
+
+        return [dict(row) for row in cursor.fetchall()]
