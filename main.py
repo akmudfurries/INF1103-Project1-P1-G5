@@ -1,221 +1,53 @@
-# Run pip install tzdata locally (needed for the timezone on Windows).
-from datetime import datetime
-from zoneinfo import ZoneInfo
+# Application entry point for the AI Inventory & Procurement Advisor
 
-import logic_manager
-import io_manager
-import data_manager
-import file_manager
-import ai_manager
-import config
+import os
 
-INVENTORY_FILE = "data/inventory.json"
-DECISIONS_FILE = "data/procurement_decisions.json"
-
-def add_inventory_record():
-    inventory_input = io_manager.prompt_inventory_record()
-    if not inventory_input:
-        return
-
-    try:
-        inventory_record = data_manager.build_inventory_record(
-            # io_manager now returns exact keys required by data_manager.build_inventory_record, so no need for mapping.
-            item_id=inventory_input["item_id"],
-            item_name=inventory_input["item_name"],
-            current_stock=inventory_input["current_stock"],
-            weekly_usage=inventory_input["weekly_usage"],
-            lead_time_weeks=inventory_input["lead_time_weeks"],
-            operational_notes=inventory_input["operational_notes"]
-        )
-
-        # optional fields returned by io_manager
-        inventory_record["category"] = inventory_input["category"]
-        inventory_record["moq"] = inventory_input["moq"]
-        inventory_record["unit_cost"] = inventory_input["unit_cost"]
-        inventory_record["budget"] = inventory_input["budget"]
-
-    except ValueError as error:
-        print(f"\n[ERROR] {error}")
-        return
-
-    records = file_manager.load_records(INVENTORY_FILE)
-
-    success, error = data_manager.add_record(
-        records,
-        inventory_record,
-        "item_id"
-    )
-
-    if not success:
-        print(f"\n[ERROR] {error}")
-        return
-
-    if file_manager.save_records(INVENTORY_FILE, records):
-        print("\n[STATUS] Inventory record saved successfully.")
-    else:
-        print("\n[ERROR] Failed to save inventory record.")
+from ai_manager import AIManager
+from ai_provider import GeminiAIProvider
+from application_controller import ApplicationController
+from data_manager import DataManager
+from database_repo import DatabaseRepository
+from io_manager import IOManager
+from logic_manager import LogicManager
 
 
-# fixed ui schema mismatch n removed temporary adapter function
-
-def view_inventory_records():
-    records = file_manager.load_records(INVENTORY_FILE)
-    io_manager.display_inventory_records(records)
-
-def remove_inventory_record():
-    records = file_manager.load_records(INVENTORY_FILE)
-    index = io_manager.prompt_remove_inventory(records)
-
-    if index is None:
-        return
-
-    removed = records.pop(index)
-
-    if file_manager.save_records(INVENTORY_FILE, records):
-        name = removed.get("item_name") or removed.get("item_id")
-        print(f"\n[STATUS] Removed '{name}'.")
-    else:
-        print("\n[ERROR] Failed to remove inventory record.")
-
-def run_inventory_analysis():
-    records = file_manager.load_records(INVENTORY_FILE)
-
-    if not records:
-        print("\nNo inventory records found.")
-        return
-    
-# removed temporary ui schema adaptor function
-
-    io_manager.display_inventory_records(records)
-
-    choice = input("\nEnter the inventory record number to analyse (or 'q' to cancel): ").strip()
-    if choice.lower() in ['q', 'quit']:
-        return
-
-    if not choice.isdigit():
-        print("\n[ERROR] Please enter a valid record number.")
-        return
-
-    index = int(choice) - 1
-
-    if index < 0 or index >= len(records):
-        print("\n[ERROR] Invalid inventory record number.")
-        return
-
-    inventory = records[index]
-
-    # AI integration is implemented but requires GEMINI_API_KEY to run.
-    # TODO: Test with a valid API key before final integration testing.
-    ai_assessment, error = ai_manager.get_ai_analysis(inventory) # run ai analysis
-
-    if error:
-        print(f"\n[ERROR] {error}")
-        return
-
-    # run quantitative business rules analysis
-    try:
-        analysis_result = logic_manager.analyse_inventory(inventory, ai_assessment)
-    except ValueError as err:
-        print(f"\n[ERROR] Business Rule Calculation Error: {err}")
-        return
-
-    # display full report to user (ui)
-    io_manager.display_full_procurement_report(inventory, ai_assessment, analysis_result)
-
-    # Prompt user for approval decision and rejection reason
-    approval_status, rejection_reason = io_manager.prompt_user_approval()
-
-    # Create procurement decision record
-    try:
-        procurement_record = data_manager.create_procurement_from_business_rule(
-            item_id=inventory["item_id"],
-            business_rule_output=analysis_result,
-            approval_status=approval_status,
-            rejection_reason=(
-                rejection_reason if approval_status == "REJECTED" else None
-            ),
-            inventory_snapshot=inventory,
-            ai_assessment=ai_assessment
-)
-
-
-    except (ValueError, KeyError) as error:
-        print(f"\n[ERROR] Failed to create procurement record: {error}")
-        return
-
-    decisions = file_manager.load_records(DECISIONS_FILE)
-    # Procurement history can contain multiple decisions for one inventory item.
-    decisions.append(procurement_record)
-
-    if file_manager.save_records(DECISIONS_FILE, decisions):
-        print("[STATUS] Procurement decision saved successfully.")
-    else:
-        print("[ERROR] Failed to save procurement decision.")
-
-
-def view_previous_recommendations():
-    while True:
-        decisions = file_manager.load_records(DECISIONS_FILE)
-        index = io_manager.display_previous_recommendations(decisions)
-
-        if index is None:
-            return
-
-        record = decisions[index]
-        io_manager.display_historical_procurement_report(record)
-        action, updates = io_manager.prompt_record_action(record)
-
-        if action == "UPDATE":
-            updates["status_updated"] = datetime.now(ZoneInfo(config.TIMEZONE)).isoformat(timespec="seconds")
-            success, error = data_manager.update_procurement_record(
-                decisions, record["procurement_id"], updates
-            )
-            if not success:
-                print(f"\n[ERROR] {error}")
-                continue
-            if file_manager.save_records(DECISIONS_FILE, decisions):
-                print("\n[STATUS] Procurement status updated.")
-            else:
-                print("\n[ERROR] Failed to save changes.")
-
-        elif action == "DELETE":
-            decisions = [
-                r for r in decisions
-                if r.get("procurement_id") != record["procurement_id"]
-            ]
-            if file_manager.save_records(DECISIONS_FILE, decisions):
-                print("\n[STATUS] Procurement record deleted.")
-            else:
-                print("\n[ERROR] Failed to delete record.")
+DATABASE_PATH = os.path.join("data", "inventory.db")
 
 
 def main():
-    io_manager.print_header()
+    # Construct application dependencies and start the CLI
 
-    while True:
-        choice = io_manager.get_main_menu_choice()
+    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
 
-        if choice == "1":
-            add_inventory_record()
-            
-        elif choice == "2":
-            view_inventory_records()
+    repository = DatabaseRepository(DATABASE_PATH)
 
-        elif choice == "3":
-            run_inventory_analysis()
+    try:
+        # Initialise SQLite before starting the application.
+        repository.initialize()
 
-        elif choice == "4":
-            view_previous_recommendations()
+        # Construct the managers and their dependencies.
+        data_manager = DataManager(repository)
 
-        elif choice == "5":
-            remove_inventory_record()
+        ai_provider = GeminiAIProvider()
+        ai_manager = AIManager(ai_provider)
 
-        elif choice in ["6", "q", "quit"]:
-            print("Exiting application.")
-            break
+        logic_manager = LogicManager()
+        io_manager = IOManager()
 
-        else:
-            print("Please enter 1, 2, 3, 4, 5 or '6' to exit application.")
+        # Inject dependencies into the application controller.
+        controller = ApplicationController(
+            io_manager=io_manager,
+            ai_manager=ai_manager,
+            logic_manager=logic_manager,
+            data_manager=data_manager,
+        )
+
+        controller.run()
+
+    finally:
+        # Close the database connection when the application exits.
+        repository.close()
+
 
 if __name__ == "__main__":
     main()
