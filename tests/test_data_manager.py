@@ -119,7 +119,7 @@ def  test_add_duplicate_inventory_record():
     data_manager = DataManager(repository)
 
     first_record = FakeInventoryRecord(
-        "INVOO1",
+        "INV001",
         "Pressure Sensor"
     )
 
@@ -151,7 +151,7 @@ def test_get_inventory_records():
         },
         {
             "item_id": "INV002",
-            "item_name": "Printer Ribbonr",
+            "item_name": "Printer Ribbon",
             "current_stock": 20,
             "weekly_usage": 4,
             "lead_time_weeks": 1,
@@ -159,7 +159,7 @@ def test_get_inventory_records():
         }
     ]
 
-    records = data_manager.get_inventory_record()
+    records = data_manager.get_inventory_records()
 
     assert len(records) == 2
     assert records[0].item_id == "INV001"
@@ -208,7 +208,7 @@ def test_remove_inventory_record():
     assert len(repository.inventory_records) == 0
 
 class FakeProcurementDecision:
-    def _init_(self, item_id, recommended_quantity, priority, action):
+    def __init__(self, item_id, recommended_quantity, priority, action):
         self.procurement_id = None
         self.item_id = item_id
         self.recommended_quantity = recommended_quantity
