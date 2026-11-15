@@ -130,19 +130,59 @@ class DatabaseRepository:
             self.conn.rollback()
             return False, str(e)
 
-    # Procurement operations
+    # -------------------------
+    # Procurement persistence
+    # -------------------------
 
-    def insert_procurement(self, record):
-        """Insert a procurement decision and its CREATED history event."""
+    def _deserialize_procurement(self, row):
+        """Convert a SQLite procurement row into a dictionary."""
+        record = dict(row)
+
+        json_fields = {
+            "inventory_snapshot_json": "inventory_snapshot",
+            "ai_assessment_json": "ai_assessment",
+            "analysis_result_json": "analysis_result"
+        }
+
+        for db_field, model_field in json_fields.items():
+            value = record.pop(db_field)
+            record[model_field] = json.loads(value) if value is not None else None
+
+        return record
+
+    def insert_procurement(self, record, event_type="CREATED"):
+        """Insert a procurement decision and its initial history event."""
+        valid_statuses = {"PENDING", "APPROVED", "REJECTED"}
+        valid_event_types = {"CREATED", "MIGRATED"}
+
+        status = record.get("approval_status", "PENDING")
+
+        if status not in valid_statuses:
+            return False, "Invalid procurement approval status."
+
+        if event_type not in valid_event_types:
+            return False, "Invalid procurement history event type."
+
+        if event_type == "CREATED" and status != "PENDING":
+            return False, "New procurement records must have PENDING status."
+
         cursor = self.conn.cursor()
 
         try:
             cursor.execute("""
                 INSERT INTO procurement (
-                    procurement_id, item_id, recommended_quantity,
-                    priority, action, approval_status, rejection_reason,
-                    timestamp, status_updated, inventory_snapshot_json,
-                    ai_assessment_json, analysis_result_json
+                    procurement_id,
+                    item_id,
+                    recommended_quantity,
+                    priority,
+                    action,
+                    approval_status,
+                    rejection_reason,
+                    timestamp,
+                    status_updated,
+                    inventory_snapshot_json,
+                    ai_assessment_json,
+                    analysis_result_json
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -151,7 +191,7 @@ class DatabaseRepository:
                 record.get("recommended_quantity"),
                 record.get("priority"),
                 record.get("action"),
-                record.get("approval_status"),
+                status,
                 record.get("rejection_reason"),
                 record.get("timestamp"),
                 record.get("status_updated"),
@@ -160,19 +200,25 @@ class DatabaseRepository:
                 json.dumps(record.get("analysis_result"))
             ))
 
+            changed_at = datetime.now().isoformat(timespec="seconds")
+
             cursor.execute("""
                 INSERT INTO procurement_history (
-                    procurement_id, event_type, previous_status,
-                    new_status, reason, changed_at
+                    procurement_id,
+                    event_type,
+                    previous_status,
+                    new_status,
+                    reason,
+                    changed_at
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
                 record.get("procurement_id"),
-                "CREATED",
+                event_type,
                 None,
-                record.get("approval_status"),
-                None,
-                datetime.now().isoformat(timespec="seconds")
+                status,
+                record.get("rejection_reason"),
+                changed_at
             ))
 
             self.conn.commit()
@@ -183,62 +229,54 @@ class DatabaseRepository:
             return False, str(e)
 
     def fetch_all_procurement(self):
-        """Fetch all procurement decisions as dictionaries."""
+        """Retrieve all procurement decisions."""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT * FROM procurement ORDER BY timestamp DESC")
 
-        records = []
+        cursor.execute("""
+            SELECT *
+            FROM procurement
+            ORDER BY timestamp DESC
+        """)
 
-        for row in cursor.fetchall():
-            record = dict(row)
-            record["inventory_snapshot"] = json.loads(
-                record.pop("inventory_snapshot_json")
-            )
-            record["ai_assessment"] = json.loads(
-                record.pop("ai_assessment_json")
-            )
-            record["analysis_result"] = json.loads(
-                record.pop("analysis_result_json")
-            )
-            records.append(record)
+        rows = cursor.fetchall()
 
-        return records
-
+        return [
+            self._deserialize_procurement(row)
+            for row in rows
+        ]
+    
     def fetch_procurement(self, procurement_id):
-        """Fetch one procurement decision by ID."""
+        """Retrieve one procurement decision by ID."""
         cursor = self.conn.cursor()
-
-        cursor.execute(
-            "SELECT * FROM procurement WHERE procurement_id = ?",
-            (procurement_id,)
-        )
+        cursor.execute("""
+            SELECT *
+            FROM procurement
+            WHERE procurement_id = ?
+        """, (procurement_id,))
 
         row = cursor.fetchone()
 
-        if row is None:
-            return None
-
-        record = dict(row)
-        record["inventory_snapshot"] = json.loads(
-            record.pop("inventory_snapshot_json")
-        )
-        record["ai_assessment"] = json.loads(
-            record.pop("ai_assessment_json")
-        )
-        record["analysis_result"] = json.loads(
-            record.pop("analysis_result_json")
-        )
-
-        return record
+        return self._deserialize_procurement(row) if row else None
 
     def update_procurement_status(
         self,
         procurement_id,
         status,
-        rejection_reason,
-        status_updated
+        rejection_reason=None,
+        status_updated=None
     ):
-        """Update procurement status and record the status change."""
+        """Update procurement status and record its history atomically."""
+        valid_statuses = {"PENDING", "APPROVED", "REJECTED"}
+
+        if status not in valid_statuses:
+            return False, "Invalid procurement approval status."
+
+        if status == "REJECTED":
+            if not isinstance(rejection_reason, str) or not rejection_reason.strip():
+                return False, "Rejection reason is required."
+        elif rejection_reason is not None:
+            return False, "Rejection reason is only allowed for rejected decisions."
+
         cursor = self.conn.cursor()
 
         try:
@@ -255,8 +293,11 @@ class DatabaseRepository:
 
             previous_status = row["approval_status"]
 
+            # Do not create duplicate history events for unchanged statuses.
             if previous_status == status:
                 return True, None
+
+            changed_at = datetime.now().isoformat(timespec="seconds")
 
             cursor.execute("""
                 UPDATE procurement
@@ -267,14 +308,18 @@ class DatabaseRepository:
             """, (
                 status,
                 rejection_reason,
-                status_updated,
+                status_updated or changed_at,
                 procurement_id
             ))
 
             cursor.execute("""
                 INSERT INTO procurement_history (
-                    procurement_id, event_type, previous_status,
-                    new_status, reason, changed_at
+                    procurement_id,
+                    event_type,
+                    previous_status,
+                    new_status,
+                    reason,
+                    changed_at
                 )
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (
@@ -283,7 +328,7 @@ class DatabaseRepository:
                 previous_status,
                 status,
                 rejection_reason,
-                datetime.now().isoformat(timespec="seconds")
+                changed_at
             ))
 
             self.conn.commit()
@@ -293,15 +338,28 @@ class DatabaseRepository:
             self.conn.rollback()
             return False, str(e)
 
+    def fetch_procurement_history(self, procurement_id):
+        """Retrieve procurement history in chronological order."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT *
+            FROM procurement_history
+            WHERE procurement_id = ?
+            ORDER BY changed_at ASC, history_id ASC
+        """, (procurement_id,))
+
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
     def delete_procurement(self, procurement_id):
-        """Delete a procurement record and its associated history."""
+        """Delete a procurement decision and its associated history."""
         cursor = self.conn.cursor()
 
         try:
-            cursor.execute(
-                "DELETE FROM procurement WHERE procurement_id = ?",
-                (procurement_id,)
-            )
+            cursor.execute("""
+                DELETE FROM procurement
+                WHERE procurement_id = ?
+            """, (procurement_id,))
 
             if cursor.rowcount == 0:
                 return False, f"Procurement record not found: {procurement_id}"
@@ -312,17 +370,3 @@ class DatabaseRepository:
         except Exception as e:
             self.conn.rollback()
             return False, str(e)
-
-    def fetch_procurement_history(self, procurement_id):
-        """Fetch procurement history in chronological order."""
-        cursor = self.conn.cursor()
-
-        cursor.execute("""
-            SELECT history_id, procurement_id, event_type,
-                   previous_status, new_status, reason, changed_at
-            FROM procurement_history
-            WHERE procurement_id = ?
-            ORDER BY changed_at ASC, history_id ASC
-        """, (procurement_id,))
-
-        return [dict(row) for row in cursor.fetchall()]
