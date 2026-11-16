@@ -255,7 +255,7 @@ class IOManager:
 
     def prompt_user_approval(self): # prompts user to approve or reject the generated procurement decision or quit
         while True:
-            choice = input("\nDo you APPROVE this recommendation? (Y/N/Defer/Quit): ").strip().upper()
+            choice = input("\nDo you APPROVE this recommendation? \n(Y/N/Defer/Quit): ").strip().upper()
             if choice in ['Y', 'YES']:
                 print("\n[STATUS] Procurement recommendation APPROVED.")
                 return "APPROVED", None
