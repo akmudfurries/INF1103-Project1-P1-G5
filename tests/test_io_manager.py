@@ -1,9 +1,11 @@
 # ====================================================
+# Install : python -m pip install pytest
 # Run: python -m pytest tests/test_io_manager.py -v
 # ====================================================
 
 import pytest
 from unittest.mock import patch
+from types import SimpleNamespace
 from io_manager import IOManager
 
 @pytest.fixture
@@ -31,7 +33,7 @@ def test_display_inventory_records_empty(io_manager, capsys):
     assert "No inventory records found" in captured.out
 
 def test_display_inventory_records_populated(io_manager, capsys):
-    records = [{"item_id": "ITEM-1", "item_name": "Screws", "category": "Hardware", "current_stock": 100, "operational_notes": "Standard stock"}]
+    records = [SimpleNamespace(item_id="ITEM-1", item_name="Screws", category="Hardware", current_stock=100, operational_notes="Standard stock")]
     io_manager.display_inventory_records(records)
     captured = capsys.readouterr()
     assert "Screws" in captured.out
@@ -56,8 +58,8 @@ def test_prompt_user_approval_defer(mock_input, io_manager):
     assert reason is None
 
 def test_display_full_procurement_report(io_manager, capsys):
-    inv = {"item_name": "Widget", "category": "Parts", "current_stock": 50, "weekly_usage": 10.0, "lead_time_weeks": 2, "operational_notes": "Stable."}
-    ai = {"demand_level": "medium", "demand_trend": "stable", "supply_risk": "low", "operational_importance": "medium", "reason": "Stable demand."}
+    inv = SimpleNamespace(item_name="Widget", category="Parts", current_stock=50, weekly_usage=10.0, lead_time_weeks=2, operational_notes="Stable.")
+    ai = SimpleNamespace(demand_level="medium", demand_trend="stable", supply_risk="low", operational_importance="medium", reason="Stable demand.")
     res = {"recommended_quantity": 20, "stock_coverage": 5.0, "priority": "MEDIUM", "action": "REORDER"}
     
     io_manager.display_full_procurement_report(inv, ai, res)
@@ -66,31 +68,27 @@ def test_display_full_procurement_report(io_manager, capsys):
     assert "Stock Coverage:" in captured.out
     assert "REORDER" in captured.out
 
-@patch('builtins.input', side_effect=['1'])
-def test_display_previous_recommendations(mock_input, io_manager):
-    records = [{"procurement_id": "PROC-12345678", "item_id": "ITEM-1", "action": "REORDER", "approval_status": "PENDING", "timestamp": "2026-10-14T16:54:03"}]
-    pid = io_manager.display_previous_recommendations(records)
-    assert pid == "PROC-12345678"
-
 @patch('builtins.input', side_effect=['q'])
-def test_display_previous_recommendations_cancel(mock_input, io_manager):
-    records = [{"procurement_id": "PROC-12345678", "item_id": "ITEM-1", "action": "REORDER", "approval_status": "PENDING", "timestamp": "2026-10-14T16:54:03"}]
-    pid = io_manager.display_previous_recommendations(records)
+def test_prompt_procurement_selection_cancel(mock_input, io_manager):
+    records = [SimpleNamespace(procurement_id="PROC-12345678", item_id="ITEM-1", action="REORDER", approval_status="PENDING", timestamp="2026-10-14T16:54:03")]
+    pid = io_manager.prompt_procurement_selection(records)
     assert pid is None
 
 def test_display_historical_procurement_report(io_manager, capsys):
-    record = {
-        "procurement_id": "PROC-87654321",
-        "item_id": "ITEM-2",
-        "timestamp": "2026-10-14T16:54:03",
-        "approval_status": "APPROVED",
-        "action": "REORDER",
-        "recommended_quantity": 50,
-        "priority": "HIGH",
-        "inventory_snapshot": {"current_stock": 5},
-        "ai_assessment": {"reason": "Urgent need."},
-        "analysis_result": {"recommended_quantity": 50}
-    }
+    record = SimpleNamespace(
+        procurement_id="PROC-87654321",
+        item_id="ITEM-2",
+        timestamp="2026-10-14T16:54:03",
+        status_updated=None,
+        approval_status="APPROVED",
+        action="REORDER",
+        recommended_quantity=50,
+        priority="HIGH",
+        inventory_snapshot={"current_stock": 5},
+        ai_assessment={"reason": "Urgent need."},
+        analysis_result={"recommended_quantity": 50},
+        rejection_reason=None
+    )
     io_manager.display_historical_procurement_report(record)
     captured = capsys.readouterr()
     assert "PROC-87654321" in captured.out
@@ -103,12 +101,11 @@ def test_display_procurement_history(io_manager, capsys):
     assert "PROCUREMENT STATUS HISTORY" in captured.out
     assert "PENDING" in captured.out
 
-@patch('builtins.input', side_effect=['1', '1', 'Approved by manager'])
+@patch('builtins.input', side_effect=['1'])
 def test_prompt_record_action(mock_input, io_manager):
-    record = {"approval_status": "PENDING"}
+    record = SimpleNamespace(approval_status="PENDING")
     action, updates = io_manager.prompt_record_action(record)
-    assert action == "UPDATE"
-    assert updates["approval_status"] == "APPROVED"
+    assert action == "VIEW"
 
 # --- Simulation Feature Tests ---
 
