@@ -6,8 +6,9 @@ WORKDIR /app
 # Singapore timezone
 ENV TZ=Asia/Singapore
 
-# Install application dependencies
-RUN pip install --no-cache-dir google-genai tzdata
+# Install application and testing dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY . .
